@@ -359,7 +359,7 @@
         <!-- Token Prices Card -->
         <div class="glass p-4 rounded-lg mb-6">
           <h2 class="text-lg font-medium mb-2 flex justify-between items-center">
-            რეალური ფასები
+            Token Prices
             <span class="real-time-indicator">
               <span class="pulse"></span> ცოცხალი
             </span>
@@ -375,7 +375,7 @@
               </thead>
               <tbody id="token-prices-body">
                 <tr class="animate-pulse">
-                  <td colspan="3" class="text-center py-4 text-gray-400">იტვირთება რეალური ფასები Jupiter-დან...</td>
+                  <td colspan="3" class="text-center py-4 text-gray-400">Loading token prices from Jupiter...</td>
                 </tr>
               </tbody>
             </table>
@@ -422,7 +422,7 @@
         <!-- Token Prices Section - New -->
         <div class="glass p-4 rounded-lg mb-6">
           <h2 class="text-lg font-medium mb-2 flex justify-between">
-            რეალური ფასები
+            Token Prices
             <span class="text-xs text-gray-400">
               განახლდა: <span id="last-update-time">-</span>
               <span class="animate-pulse mx-1">●</span>
@@ -440,7 +440,7 @@
               <tbody id="token-prices-body">
                 <tr>
                   <td colspan="3" class="text-center py-4 text-gray-400">
-                    <div class="animate-pulse">იტვირთება ფასები...</div>
+                    <div class="animate-pulse">Loading token prices from Jupiter...</div>
                   </td>
                 </tr>
               </tbody>
@@ -547,307 +547,317 @@
         <div class="dashboard-main">
           <!-- Arbitrage Opportunities Section -->
           <div class="glass p-4 rounded-lg mb-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium">არბიტრაჟის შესაძლებლობები</h2>
-            <button id="toggle-advanced-arbitrage" class="btn-neo py-1 px-2 text-xs">გაფართოებული არბიტრაჟი</button>
-          </div>
-          
-          <div id="arbitrage-opportunities">
-            <!-- Arbitrage opportunities will be dynamically inserted -->
-          </div>
-        </div>
-        
-        <!-- Advanced Arbitrage Section (Hidden by default) -->
-        <div id="advanced-arbitrage-container" class="glass p-4 rounded-lg mb-6 hidden">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium">გაფართოებული არბიტრაჟი</h2>
-            <button id="hide-advanced-arbitrage" class="btn-neo py-1 px-2 text-xs">დამალვა</button>
-          </div>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-            <div id="advanced-arbitrage-opportunities">
-              <!-- Advanced arbitrage opportunities will be inserted -->
+            <h2 class="text-lg font-medium mb-2 flex justify-between">
+              <span>Arbitrage Opportunities</span>
+              <span class="text-sm">
+                <span id="arbitrage-count">0</span> found
+              </span>
+            </h2>
+            
+            <!-- Loading State -->
+            <div id="opportunities-loading" class="text-center py-4">
+              <div class="loading-spinner"></div>
+              <div class="mt-2 text-sm text-gray-400">Searching for arbitrage opportunities...</div>
             </div>
             
-            <div id="liquidity-analysis">
-              <!-- Liquidity analysis will be inserted -->
+            <!-- Opportunities Container -->
+            <div id="opportunities-container" class="space-y-3">
+              <!-- Opportunities will be injected here by JS -->
+            </div>
+          </div>
+          
+          <!-- Advanced Arbitrage Section (Hidden by default) -->
+          <div id="advanced-arbitrage-container" class="glass p-4 rounded-lg mb-6 hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-medium">გაფართოებული არბიტრაჟი</h2>
+              <button id="hide-advanced-arbitrage" class="btn-neo py-1 px-2 text-xs">დამალვა</button>
             </div>
             
-            <div id="historical-analysis">
-              <!-- Historical analysis will be inserted -->
-            </div>
-          </div>
-        </div>
-        
-        <!-- Transaction History Section -->
-        <div class="glass p-4 rounded-lg mb-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium">ბოლო ტრანზაქციები</h2>
-            <button class="btn-neo py-1 px-2 text-xs" id="view-full-history">სრული ისტორია</button>
-          </div>
-          
-          <div id="transaction-stats" class="glass p-3 rounded-lg mb-4">
-            <!-- Transaction statistics will be inserted here by JavaScript -->
-          </div>
-          
-          <table class="w-full">
-            <thead>
-              <tr>
-                <th>დრო</th>
-                <th>წყვილი</th>
-                <th>ტიპი</th>
-                <th>ზომა</th>
-                <th>მოგება</th>
-                <th>სტატუსი</th>
-              </tr>
-            </thead>
-            <tbody id="transaction-table-body">
-              <!-- Transaction data will be inserted here by JavaScript -->
-            </tbody>
-          </table>
-          
-          <div class="text-xs text-gray-400 mt-3 text-right">
-            დააწკაპუნეთ ტრანზაქციაზე დეტალების სანახავად
-          </div>
-        </div>
-        
-        <!-- Broker Comparison Section -->
-        <div class="glass p-4 rounded-lg mb-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium">საბროკეროების შედარება</h2>
-            <div class="text-xs bg-indigo-500 bg-opacity-30 text-indigo-200 px-2 py-1 rounded">რეალური დროის ფასები</div>
-          </div>
-          
-          <div class="mb-4">
-            <div class="text-sm mb-2">საუკეთესო ყიდვა-გაყიდვის შესაძლებლობები</div>
-            <select id="broker-token-pair" class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1">
-              <option value="SOL_USDC">SOL/USDC</option>
-              <option value="SOL_USDT">SOL/USDT</option>
-              <option value="BTC_USDC">BTC/USDC</option>
-              <option value="ETH_USDC">ETH/USDC</option>
-              <option value="JUP_USDC">JUP/USDC</option>
-              <option value="SOL_BTC">SOL/BTC</option>
-              <option value="SOL_ETH">SOL/ETH</option>
-              <option value="RAY_USDC">RAY/USDC</option>
-            </select>
-          </div>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <!-- Buy Side -->
-            <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
-              <div class="text-sm font-medium text-green-400 mb-2">საუკეთესო ყიდვა:</div>
-              <div id="best-buy-dex" class="text-lg font-bold">Jupiter</div>
-              <div class="grid grid-cols-2 gap-2 text-sm mt-2">
-                <div>
-                  <div class="text-gray-400">ფასი</div>
-                  <div id="best-buy-price">120.45 USDC</div>
-                </div>
-                <div>
-                  <div class="text-gray-400">საკომისიო</div>
-                  <div id="best-buy-fee">0.03%</div>
-                </div>
-                <div>
-                  <div class="text-gray-400">გაზის საფასური</div>
-                  <div id="best-buy-gas">0.000005 SOL</div>
-                </div>
-                <div>
-                  <div class="text-gray-400">მინ. შესვლა</div>
-                  <div id="best-buy-min">0.01 SOL</div>
-                </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+              <div id="advanced-arbitrage-opportunities">
+                <!-- Advanced arbitrage opportunities will be inserted -->
               </div>
-            </div>
-            
-            <!-- Sell Side -->
-            <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
-              <div class="text-sm font-medium text-red-400 mb-2">საუკეთესო გაყიდვა:</div>
-              <div id="best-sell-dex" class="text-lg font-bold">Raydium</div>
-              <div class="grid grid-cols-2 gap-2 text-sm mt-2">
-                <div>
-                  <div class="text-gray-400">ფასი</div>
-                  <div id="best-sell-price">120.52 USDC</div>
-                </div>
-                <div>
-                  <div class="text-gray-400">საკომისიო</div>
-                  <div id="best-sell-fee">0.25%</div>
-                </div>
-                <div>
-                  <div class="text-gray-400">გაზის საფასური</div>
-                  <div id="best-sell-gas">0.000004 SOL</div>
-                </div>
-                <div>
-                  <div class="text-gray-400">გასვლის ბარიერი</div>
-                  <div id="best-sell-min">0.1 SOL</div>
-                </div>
+              
+              <div id="liquidity-analysis">
+                <!-- Liquidity analysis will be inserted -->
+              </div>
+              
+              <div id="historical-analysis">
+                <!-- Historical analysis will be inserted -->
               </div>
             </div>
           </div>
           
-          <!-- Arbitrage Opportunity Panel -->
-          <div id="arbitrage-opportunity-panel" class="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-lg p-4 mb-4">
-            <div class="flex justify-between items-center mb-2">
-              <div class="text-sm font-medium text-indigo-200">საუკეთესო არბიტრაჟის შესაძლებლობა:</div>
-              <div class="text-sm text-white font-bold bg-indigo-500 bg-opacity-50 px-2 py-1 rounded" id="arb-profit-percent">+0.58%</div>
+          <!-- Transaction History Section -->
+          <div class="glass p-4 rounded-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-medium">ბოლო ტრანზაქციები</h2>
+              <button class="btn-neo py-1 px-2 text-xs" id="view-full-history">სრული ისტორია</button>
             </div>
             
-            <div class="grid grid-cols-2 gap-4 text-sm">
+            <div id="transaction-stats" class="glass p-3 rounded-lg mb-4">
+              <!-- Transaction statistics will be inserted here by JavaScript -->
+            </div>
+            
+            <table class="w-full">
+              <thead>
+                <tr>
+                  <th>დრო</th>
+                  <th>წყვილი</th>
+                  <th>ტიპი</th>
+                  <th>ზომა</th>
+                  <th>მოგება</th>
+                  <th>სტატუსი</th>
+                </tr>
+              </thead>
+              <tbody id="transaction-table-body">
+                <!-- Transaction data will be inserted here by JavaScript -->
+              </tbody>
+            </table>
+            
+            <div class="text-xs text-gray-400 mt-3 text-right">
+              დააწკაპუნეთ ტრანზაქციაზე დეტალების სანახავად
+            </div>
+          </div>
+          
+          <!-- Broker Comparison Section -->
+          <div class="glass p-4 rounded-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-medium">საბროკეროების შედარება</h2>
+              <div class="text-xs bg-indigo-500 bg-opacity-30 text-indigo-200 px-2 py-1 rounded">რეალური დროის ფასები</div>
+            </div>
+            
+            <div class="mb-4">
+              <div class="text-sm mb-2">საუკეთესო ყიდვა-გაყიდვის შესაძლებლობები</div>
+              <select id="broker-token-pair" class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1">
+                <option value="SOL_USDC">SOL/USDC</option>
+                <option value="SOL_USDT">SOL/USDT</option>
+                <option value="BTC_USDC">BTC/USDC</option>
+                <option value="ETH_USDC">ETH/USDC</option>
+                <option value="JUP_USDC">JUP/USDC</option>
+                <option value="SOL_BTC">SOL/BTC</option>
+                <option value="SOL_ETH">SOL/ETH</option>
+                <option value="RAY_USDC">RAY/USDC</option>
+              </select>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <!-- Buy Side -->
+              <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
+                <div class="text-sm font-medium text-green-400 mb-2">საუკეთესო ყიდვა:</div>
+                <div id="best-buy-dex" class="text-lg font-bold">Jupiter</div>
+                <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+                  <div>
+                    <div class="text-gray-400">ფასი</div>
+                    <div id="best-buy-price">120.45 USDC</div>
+                  </div>
+                  <div>
+                    <div class="text-gray-400">საკომისიო</div>
+                    <div id="best-buy-fee">0.03%</div>
+                  </div>
+                  <div>
+                    <div class="text-gray-400">გაზის საფასური</div>
+                    <div id="best-buy-gas">0.000005 SOL</div>
+                  </div>
+                  <div>
+                    <div class="text-gray-400">მინ. შესვლა</div>
+                    <div id="best-buy-min">0.01 SOL</div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Sell Side -->
+              <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
+                <div class="text-sm font-medium text-red-400 mb-2">საუკეთესო გაყიდვა:</div>
+                <div id="best-sell-dex" class="text-lg font-bold">Raydium</div>
+                <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+                  <div>
+                    <div class="text-gray-400">ფასი</div>
+                    <div id="best-sell-price">120.52 USDC</div>
+                  </div>
+                  <div>
+                    <div class="text-gray-400">საკომისიო</div>
+                    <div id="best-sell-fee">0.25%</div>
+                  </div>
+                  <div>
+                    <div class="text-gray-400">გაზის საფასური</div>
+                    <div id="best-sell-gas">0.000004 SOL</div>
+                  </div>
+                  <div>
+                    <div class="text-gray-400">გასვლის ბარიერი</div>
+                    <div id="best-sell-min">0.1 SOL</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Arbitrage Opportunity Panel -->
+            <div id="arbitrage-opportunity-panel" class="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-lg p-4 mb-4">
+              <div class="flex justify-between items-center mb-2">
+                <div class="text-sm font-medium text-indigo-200">საუკეთესო არბიტრაჟის შესაძლებლობა:</div>
+                <div class="text-sm text-white font-bold bg-indigo-500 bg-opacity-50 px-2 py-1 rounded" id="arb-profit-percent">+0.58%</div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div class="text-indigo-200">ყიდვა</div>
+                  <div class="font-medium" id="arb-buy-dex">Jupiter</div>
+                </div>
+                <div>
+                  <div class="text-indigo-200">გაყიდვა</div>
+                  <div class="font-medium" id="arb-sell-dex">Raydium</div>
+                </div>
+                <div>
+                  <div class="text-indigo-200">მინ. რაოდენობა</div>
+                  <div class="font-medium" id="arb-min-amount">5.42 SOL</div>
+                </div>
+                <div>
+                  <div class="text-indigo-200">საკომისიოს შემდეგ მოგება</div>
+                  <div class="font-medium text-green-300" id="arb-net-profit">0.58%</div>
+                </div>
+              </div>
+              
+              <div class="mt-3">
+                <button id="execute-arbitrage" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm transition">
+                  შესრულება
+                </button>
+              </div>
+            </div>
+            
+            <!-- Current Gas Status -->
+            <div class="bg-gray-800 bg-opacity-30 rounded-lg p-3 flex justify-between items-center">
               <div>
-                <div class="text-indigo-200">ყიდვა</div>
-                <div class="font-medium" id="arb-buy-dex">Jupiter</div>
+                <div class="text-xs text-gray-400">გაზის მდგომარეობა</div>
+                <div class="text-sm font-medium" id="gas-status">ნორმალური</div>
               </div>
               <div>
-                <div class="text-indigo-200">გაყიდვა</div>
-                <div class="font-medium" id="arb-sell-dex">Raydium</div>
+                <div class="text-xs text-gray-400">საშუალო დანაზოგი</div>
+                <div class="text-sm font-medium text-green-400" id="avg-savings">0.42%</div>
               </div>
               <div>
-                <div class="text-indigo-200">მინ. რაოდენობა</div>
-                <div class="font-medium" id="arb-min-amount">5.42 SOL</div>
+                <div class="text-xs text-gray-400">ბოლო განახლება</div>
+                <div class="text-sm" id="broker-last-update">30 წმ წინ</div>
               </div>
+            </div>
+          </div>
+          
+          <!-- Risk Management Section -->
+          <div class="glass p-4 rounded-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-medium">რისკის მართვა</h2>
+              <div class="text-xs bg-blue-500 bg-opacity-30 text-blue-200 px-2 py-1 rounded">საუკეთესო პრაქტიკა</div>
+            </div>
+            
+            <div class="mb-4">
+              <div class="text-sm mb-2">საერთო რისკის დონე</div>
+              <div class="risk-gauge">
+                <div class="risk-gauge-fill" style="width: 45%"></div>
+              </div>
+              <div class="text-xs text-gray-400 mt-1">საშუალო - 45% მაქსიმალური რისკის</div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <div class="text-indigo-200">საკომისიოს შემდეგ მოგება</div>
-                <div class="font-medium text-green-300" id="arb-net-profit">0.58%</div>
+                <div class="text-sm mb-2">მაქსიმალური ტრანზაქციის ზომა</div>
+                <div class="flex items-center space-x-3">
+                  <input type="range" min="1" max="50" value="15" class="risk-slider w-full">
+                  <span class="parameter-value">15 SOL</span>
+                </div>
+              </div>
+              
+              <div>
+                <div class="text-sm mb-2">გაზის ფასის ლიმიტი</div>
+                <div class="flex items-center space-x-3">
+                  <input type="range" min="10" max="100" value="35" class="risk-slider w-full">
+                  <span class="parameter-value">35 Gwei</span>
+                </div>
+              </div>
+              
+              <div>
+                <div class="text-sm mb-2">მინიმალური მოგების ზღვარი</div>
+                <div class="flex items-center space-x-3">
+                  <input type="range" min="0.1" max="5" step="0.1" value="0.5" class="risk-slider w-full">
+                  <span class="parameter-value">0.5%</span>
+                </div>
+              </div>
+              
+              <div>
+                <div class="text-sm mb-2">Stop-Loss ზღვარი</div>
+                <div class="flex items-center space-x-3">
+                  <input type="range" min="-10" max="-0.5" step="0.5" value="-3" class="risk-slider w-full">
+                  <span class="parameter-value">-3%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- System Log Section -->
+          <div class="glass p-4 rounded-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-medium">სისტემის ლოგი</h2>
+              <div class="flex flex-col items-end">
+                <div class="text-xs text-gray-400">ოპტიმიზებული ლოგირება: 10MB როტაცია / 1 კვირის შენახვა</div>
+                <div class="text-xs text-green-400">ადრე არსებული 2400+ ლოგ-ფაილი წაშლილია</div>
               </div>
             </div>
             
-            <div class="mt-3">
-              <button id="execute-arbitrage" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm transition">
-                შესრულება
-              </button>
+            <div class="log-output">
+              <div><span class="log-date">[2025-04-06 03:01:42]</span> <span class="log-success">INFO</span> - ტრანზაქცია შესრულდა: SOL → USDC, +0.18 SOL მოგება</div>
+              <div><span class="log-date">[2025-04-06 03:01:39]</span> <span class="log-info">INFO</span> - დაიწყო ტრანზაქცია: SOL → USDC, 15 SOL, Jupiter</div>
+              <div><span class="log-date">[2025-04-06 03:00:15]</span> <span class="log-info">INFO</span> - არბიტრაჟის შესაძლებლობა: SOL/USDC +1.03%, Jupiter → Raydium</div>
+              <div><span class="log-date">[2025-04-06 02:58:42]</span> <span class="log-warning">WARN</span> - გაზის ფასი გაიზარდა: 28 → 31 Gwei</div>
+              <div><span class="log-date">[2025-04-06 02:48:15]</span> <span class="log-success">INFO</span> - ტრანზაქცია შესრულდა: ETH → SOL, +0.21 SOL მოგება</div>
+            </div>
+            
+            <div class="flex justify-end mt-3">
+              <button class="btn-neo py-1 px-2 text-xs">სრული ლოგების ნახვა</button>
             </div>
           </div>
           
-          <!-- Current Gas Status -->
-          <div class="bg-gray-800 bg-opacity-30 rounded-lg p-3 flex justify-between items-center">
-            <div>
-              <div class="text-xs text-gray-400">გაზის მდგომარეობა</div>
-              <div class="text-sm font-medium" id="gas-status">ნორმალური</div>
+          <!-- Performance Monitoring Section -->
+          <div class="glass p-4 rounded-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-medium">სისტემის წარმადობა</h2>
+              <div id="refresh-performance" class="text-xs cursor-pointer hover:text-blue-400">განახლება</div>
             </div>
-            <div>
-              <div class="text-xs text-gray-400">საშუალო დანაზოგი</div>
-              <div class="text-sm font-medium text-green-400" id="avg-savings">0.42%</div>
+            
+            <div id="performance-report">
+              <!-- Performance report will be inserted by analytics.js -->
             </div>
-            <div>
-              <div class="text-xs text-gray-400">ბოლო განახლება</div>
-              <div class="text-sm" id="broker-last-update">30 წმ წინ</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Risk Management Section -->
-        <div class="glass p-4 rounded-lg mb-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium">რისკის მართვა</h2>
-            <div class="text-xs bg-blue-500 bg-opacity-30 text-blue-200 px-2 py-1 rounded">საუკეთესო პრაქტიკა</div>
           </div>
           
-          <div class="mb-4">
-            <div class="text-sm mb-2">საერთო რისკის დონე</div>
-            <div class="risk-gauge">
-              <div class="risk-gauge-fill" style="width: 45%"></div>
-            </div>
-            <div class="text-xs text-gray-400 mt-1">საშუალო - 45% მაქსიმალური რისკის</div>
-          </div>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <div class="text-sm mb-2">მაქსიმალური ტრანზაქციის ზომა</div>
-              <div class="flex items-center space-x-3">
-                <input type="range" min="1" max="50" value="15" class="risk-slider w-full">
-                <span class="parameter-value">15 SOL</span>
+          <!-- Market Analysis Section -->
+          <div class="glass p-4 rounded-lg mb-6" id="market-analysis-container">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-medium">ბაზრის ანალიზი</h2>
+              <div class="flex space-x-2">
+                <button class="btn-neo py-1 px-2 text-xs" data-timeframe="24">დღე</button>
+                <button class="btn-neo py-1 px-2 text-xs" data-timeframe="168">კვირა</button>
               </div>
             </div>
             
-            <div>
-              <div class="text-sm mb-2">გაზის ფასის ლიმიტი</div>
-              <div class="flex items-center space-x-3">
-                <input type="range" min="10" max="100" value="35" class="risk-slider w-full">
-                <span class="parameter-value">35 Gwei</span>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div id="sol-analysis" class="market-token-analysis" data-token="SOL">
+                <!-- SOL analysis inserted by analytics.js -->
+              </div>
+              <div id="sol-chart" class="market-token-chart" data-token="SOL">
+                <!-- SOL chart inserted by analytics.js -->
               </div>
             </div>
             
-            <div>
-              <div class="text-sm mb-2">მინიმალური მოგების ზღვარი</div>
-              <div class="flex items-center space-x-3">
-                <input type="range" min="0.1" max="5" step="0.1" value="0.5" class="risk-slider w-full">
-                <span class="parameter-value">0.5%</span>
+            <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div id="btc-analysis" class="market-token-analysis" data-token="BTC">
+                <!-- BTC analysis inserted by analytics.js -->
               </div>
-            </div>
-            
-            <div>
-              <div class="text-sm mb-2">Stop-Loss ზღვარი</div>
-              <div class="flex items-center space-x-3">
-                <input type="range" min="-10" max="-0.5" step="0.5" value="-3" class="risk-slider w-full">
-                <span class="parameter-value">-3%</span>
+              <div id="eth-analysis" class="market-token-analysis" data-token="ETH">
+                <!-- ETH analysis inserted by analytics.js -->
               </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- System Log Section -->
-        <div class="glass p-4 rounded-lg mb-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium">სისტემის ლოგი</h2>
-            <div class="flex flex-col items-end">
-              <div class="text-xs text-gray-400">ოპტიმიზებული ლოგირება: 10MB როტაცია / 1 კვირის შენახვა</div>
-              <div class="text-xs text-green-400">ადრე არსებული 2400+ ლოგ-ფაილი წაშლილია</div>
-            </div>
-          </div>
-          
-          <div class="log-output">
-            <div><span class="log-date">[2025-04-06 03:01:42]</span> <span class="log-success">INFO</span> - ტრანზაქცია შესრულდა: SOL → USDC, +0.18 SOL მოგება</div>
-            <div><span class="log-date">[2025-04-06 03:01:39]</span> <span class="log-info">INFO</span> - დაიწყო ტრანზაქცია: SOL → USDC, 15 SOL, Jupiter</div>
-            <div><span class="log-date">[2025-04-06 03:00:15]</span> <span class="log-info">INFO</span> - არბიტრაჟის შესაძლებლობა: SOL/USDC +1.03%, Jupiter → Raydium</div>
-            <div><span class="log-date">[2025-04-06 02:58:42]</span> <span class="log-warning">WARN</span> - გაზის ფასი გაიზარდა: 28 → 31 Gwei</div>
-            <div><span class="log-date">[2025-04-06 02:48:15]</span> <span class="log-success">INFO</span> - ტრანზაქცია შესრულდა: ETH → SOL, +0.21 SOL მოგება</div>
-          </div>
-          
-          <div class="flex justify-end mt-3">
-            <button class="btn-neo py-1 px-2 text-xs">სრული ლოგების ნახვა</button>
-          </div>
-        </div>
-        
-        <!-- Performance Monitoring Section -->
-        <div class="glass p-4 rounded-lg mb-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium">სისტემის წარმადობა</h2>
-            <div id="refresh-performance" class="text-xs cursor-pointer hover:text-blue-400">განახლება</div>
-          </div>
-          
-          <div id="performance-report">
-            <!-- Performance report will be inserted by analytics.js -->
-          </div>
-        </div>
-        
-        <!-- Market Analysis Section -->
-        <div class="glass p-4 rounded-lg mb-6" id="market-analysis-container">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium">ბაზრის ანალიზი</h2>
-            <div class="flex space-x-2">
-              <button class="btn-neo py-1 px-2 text-xs" data-timeframe="24">დღე</button>
-              <button class="btn-neo py-1 px-2 text-xs" data-timeframe="168">კვირა</button>
-            </div>
-          </div>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div id="sol-analysis" class="market-token-analysis" data-token="SOL">
-              <!-- SOL analysis inserted by analytics.js -->
-            </div>
-            <div id="sol-chart" class="market-token-chart" data-token="SOL">
-              <!-- SOL chart inserted by analytics.js -->
-            </div>
-          </div>
-          
-          <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div id="btc-analysis" class="market-token-analysis" data-token="BTC">
-              <!-- BTC analysis inserted by analytics.js -->
-            </div>
-            <div id="eth-analysis" class="market-token-analysis" data-token="ETH">
-              <!-- ETH analysis inserted by analytics.js -->
-            </div>
-            <div id="usdc-analysis" class="market-token-analysis" data-token="USDC">
-              <!-- USDC analysis inserted by analytics.js -->
-            </div>
-            <div id="jup-analysis" class="market-token-analysis" data-token="JUP">
-              <!-- JUP analysis inserted by analytics.js -->
+              <div id="usdc-analysis" class="market-token-analysis" data-token="USDC">
+                <!-- USDC analysis inserted by analytics.js -->
+              </div>
+              <div id="jup-analysis" class="market-token-analysis" data-token="JUP">
+                <!-- JUP analysis inserted by analytics.js -->
+              </div>
             </div>
           </div>
         </div>

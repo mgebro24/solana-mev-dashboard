@@ -3,14 +3,14 @@
  * Handles rendering of arbitrage opportunities and automated trading functions
  */
 
-// DOM references
-const domElements = {
-  opportunitiesContainer: document.getElementById('opportunities-container'),
-  opportunitiesLoading: document.getElementById('opportunities-loading'),
-  opportunityTemplate: document.getElementById('opportunity-template'),
-  arbitrageCount: document.getElementById('arbitrage-count'),
-  walletBalance: document.getElementById('total-balance'),
-  profitIndicator: document.getElementById('profit-indicator')
+// DOM references (will be initialized on page load)
+let domElements = {
+  opportunitiesContainer: null,
+  opportunitiesLoading: null,
+  opportunityTemplate: null,
+  arbitrageCount: null,
+  walletBalance: null,
+  profitIndicator: null
 };
 
 // UI state
@@ -31,6 +31,35 @@ const uiState = {
 function initArbitrageUI() {
   console.log('Initializing arbitrage UI module...');
   
+  // Initialize DOM references - critical to do this here instead of at top level
+  domElements = {
+    opportunitiesContainer: document.getElementById('opportunities-container'),
+    opportunitiesLoading: document.getElementById('opportunities-loading'),
+    opportunityTemplate: document.getElementById('opportunity-template'),
+    arbitrageCount: document.getElementById('arbitrage-count'),
+    walletBalance: document.getElementById('total-balance'),
+    profitIndicator: document.getElementById('profit-indicator')
+  };
+  
+  console.log('DOM Elements initialized:', {
+    opportunitiesContainer: !!domElements.opportunitiesContainer,
+    opportunitiesLoading: !!domElements.opportunitiesLoading,
+    opportunityTemplate: !!domElements.opportunityTemplate
+  });
+  
+  // If we don't have the opportunities container, try to create a fallback
+  if (!domElements.opportunitiesContainer) {
+    console.warn('Opportunities container not found, creating fallback');
+    const mainContent = document.querySelector('main') || document.body;
+    
+    const fallbackContainer = document.createElement('div');
+    fallbackContainer.id = 'opportunities-container';
+    fallbackContainer.className = 'space-y-3';
+    mainContent.appendChild(fallbackContainer);
+    
+    domElements.opportunitiesContainer = fallbackContainer;
+  }
+  
   // Register event listeners
   registerEventListeners();
   
@@ -39,6 +68,31 @@ function initArbitrageUI() {
   
   // Start periodic UI updates
   setInterval(updateTimestamps, 10000); // Update timestamps every 10 seconds
+  
+  // Force generate some sample opportunities if none exist
+  setTimeout(() => {
+    if (uiState.totalOpportunitiesCount === 0 && window.solanaServices) {
+      console.log('No opportunities yet, generating samples...');
+      if (window.solanaServices.generateSampleTriangularArbitrageOpportunities) {
+        const triangular = window.solanaServices.generateSampleTriangularArbitrageOpportunities();
+        const simple = window.solanaServices.generateSampleSimpleArbitrageOpportunities();
+        
+        // Update state and UI
+        uiState.opportunities = {
+          simple: simple || [],
+          triangular: triangular || [],
+          complex: []
+        };
+        
+        uiState.totalOpportunitiesCount = (simple?.length || 0) + (triangular?.length || 0);
+        uiState.lastUpdate = Date.now();
+        
+        // Update UI
+        updateArbitrageCount(uiState.totalOpportunitiesCount);
+        renderArbitrageOpportunities();
+      }
+    }
+  }, 2000);
 }
 
 /**
