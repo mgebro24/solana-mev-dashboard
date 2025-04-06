@@ -128,6 +128,131 @@
       }
     }
   </style>
+  
+  <!-- Trading Dashboard CSS -->
+  <style>
+    /* Form inputs for trading dashboard */
+    .form-input {
+      background-color: rgba(30, 30, 46, 0.6);
+      border: 1px solid rgba(100, 100, 120, 0.3);
+      border-radius: 0.25rem;
+      color: #e6e6e6;
+      padding: 0.5rem;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    
+    .form-input:focus {
+      border-color: #bb86fc;
+      outline: none;
+    }
+    
+    /* Switch toggle for network selection */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+    
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(60, 60, 80, 0.6);
+      transition: .4s;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #e6e6e6;
+      transition: .4s;
+    }
+    
+    input:checked + .slider {
+      background-color: #bb86fc;
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+    
+    .slider.round {
+      border-radius: 24px;
+    }
+    
+    .slider.round:before {
+      border-radius: 50%;
+    }
+    
+    /* Status indicators */
+    .status-active {
+      color: #69f0ae;
+      font-weight: 500;
+    }
+    
+    .status-inactive {
+      color: #ff7597;
+      font-weight: 500;
+    }
+    
+    /* Glass inner elements */
+    .glass-inner {
+      background-color: rgba(30, 30, 46, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(100, 100, 120, 0.1);
+    }
+    
+    /* Buttons */
+    .btn-primary {
+      background-color: #bb86fc;
+      color: #1a1a2e;
+      border-radius: 0.25rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary:hover {
+      background-color: #a066fb;
+    }
+    
+    .btn-primary:disabled {
+      background-color: #6b4a8a;
+      cursor: not-allowed;
+    }
+    
+    .btn-secondary {
+      background-color: rgba(80, 80, 100, 0.3);
+      color: #e6e6e6;
+      border: 1px solid rgba(100, 100, 120, 0.3);
+      border-radius: 0.25rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background-color: rgba(100, 100, 120, 0.4);
+    }
+    
+    .btn-secondary:disabled {
+      color: #888;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
   <!-- Animated background grid effect -->
@@ -240,7 +365,7 @@
                 <tr class="text-gray-400 border-b border-gray-700">
                   <th class="text-left pb-2">ტოკენი</th>
                   <th class="text-right pb-2">ფასი (USD)</th>
-                  <th class="text-right pb-2">24ს ცვლილება</th>
+                  <th class="text-right pb-2">24სთ ცვლილება</th>
                 </tr>
               </thead>
               <tbody id="token-prices-body">
@@ -315,6 +440,101 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+        
+        <!-- Trading Dashboard Section - New -->
+        <div class="glass p-4 rounded-lg mb-6">
+          <h2 class="text-lg font-medium mb-4">სავაჭრო დაშბორდი</h2>
+          
+          <div class="space-y-4">
+            <!-- Trading Configuration -->
+            <div class="glass-inner p-3 rounded-md">
+              <h3 class="text-md font-medium mb-2">კონფიგურაცია</h3>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <!-- Amount Input -->
+                <div class="form-group">
+                  <label for="trade-amount" class="text-gray-400 text-sm mb-1 block">სავაჭრო თანხა ($)</label>
+                  <input type="number" id="trade-amount" class="form-input" value="100" min="1" step="1">
+                </div>
+                
+                <!-- Min Profit -->
+                <div class="form-group">
+                  <label for="min-profit-percent" class="text-gray-400 text-sm mb-1 block">მინ. მოგება (%)</label>
+                  <input type="number" id="min-profit-percent" class="form-input" value="1.0" min="0.1" step="0.1">
+                </div>
+                
+                <!-- Max Trades per Hour -->
+                <div class="form-group">
+                  <label for="max-trades-hour" class="text-gray-400 text-sm mb-1 block">მაქს. ტრანზაქციები/საათში</label>
+                  <input type="number" id="max-trades-hour" class="form-input" value="10" min="1" max="60" step="1">
+                </div>
+                
+                <!-- Network Selection -->
+                <div class="form-group">
+                  <label class="text-gray-400 text-sm mb-1 block">ქსელი</label>
+                  <div class="flex items-center">
+                    <span class="mr-2 text-sm">ტესტნეტი</span>
+                    <label class="switch">
+                      <input type="checkbox" id="network-toggle">
+                      <span class="slider round"></span>
+                    </label>
+                    <span class="ml-2 text-sm">მეინქსელი</span>
+                  </div>
+                </div>
+                
+                <!-- Auto Trade Toggle -->
+                <div class="form-group">
+                  <label class="text-gray-400 text-sm mb-1 block">ავტომატური ვაჭრობა</label>
+                  <div class="flex items-center">
+                    <label class="switch">
+                      <input type="checkbox" id="auto-trade-toggle">
+                      <span class="slider round"></span>
+                    </label>
+                    <span class="ml-2 text-sm">ავტომატურად ვაჭრობს საუკეთესო შესაძლებლობებზე</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Trading Controls -->
+            <div class="flex gap-3">
+              <button id="start-trading-btn" class="btn-primary py-2 px-4">
+                <i class="fas fa-play mr-2"></i> დაწყება
+              </button>
+              <button id="stop-trading-btn" class="btn-secondary py-2 px-4" disabled>
+                <i class="fas fa-stop mr-2"></i> შეჩერება
+              </button>
+            </div>
+            
+            <!-- Trading Stats -->
+            <div class="glass-inner p-3 rounded-md">
+              <h3 class="text-md font-medium mb-2">სტატისტიკა</h3>
+              
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="stat-item">
+                  <div class="text-gray-400 text-sm">სტატუსი</div>
+                  <div id="trading-status" class="status-inactive">გაჩერებული</div>
+                </div>
+                <div class="stat-item">
+                  <div class="text-gray-400 text-sm">ჯამური მოგება</div>
+                  <div id="total-profit" class="text-xl font-medium">$0.00</div>
+                </div>
+                <div class="stat-item">
+                  <div class="text-gray-400 text-sm">ტრანზაქციების რ-ბა</div>
+                  <div id="trades-count" class="text-xl font-medium">0</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Trade History -->
+            <div class="glass-inner p-3 rounded-md">
+              <h3 class="text-md font-medium mb-2">ტრანზაქციების ისტორია</h3>
+              <div id="trade-history-container" class="trade-history">
+                <div class="text-center text-gray-500 py-4">ჯერ არ არის ტრანზაქციები</div>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -394,117 +614,115 @@
           </div>
           
           <div class="mb-4">
+            <div class="text-sm mb-2">საუკეთესო ყიდვა-გაყიდვის შესაძლებლობები</div>
+            <select id="broker-token-pair" class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1">
+              <option value="SOL_USDC">SOL/USDC</option>
+              <option value="SOL_USDT">SOL/USDT</option>
+              <option value="BTC_USDC">BTC/USDC</option>
+              <option value="ETH_USDC">ETH/USDC</option>
+              <option value="JUP_USDC">JUP/USDC</option>
+              <option value="SOL_BTC">SOL/BTC</option>
+              <option value="SOL_ETH">SOL/ETH</option>
+              <option value="RAY_USDC">RAY/USDC</option>
+            </select>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <!-- Buy Side -->
+            <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
+              <div class="text-sm font-medium text-green-400 mb-2">საუკეთესო ყიდვა:</div>
+              <div id="best-buy-dex" class="text-lg font-bold">Jupiter</div>
+              <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+                <div>
+                  <div class="text-gray-400">ფასი</div>
+                  <div id="best-buy-price">120.45 USDC</div>
+                </div>
+                <div>
+                  <div class="text-gray-400">საკომისიო</div>
+                  <div id="best-buy-fee">0.03%</div>
+                </div>
+                <div>
+                  <div class="text-gray-400">გაზის საფასური</div>
+                  <div id="best-buy-gas">0.000005 SOL</div>
+                </div>
+                <div>
+                  <div class="text-gray-400">მინ. შესვლა</div>
+                  <div id="best-buy-min">0.01 SOL</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Sell Side -->
+            <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
+              <div class="text-sm font-medium text-red-400 mb-2">საუკეთესო გაყიდვა:</div>
+              <div id="best-sell-dex" class="text-lg font-bold">Raydium</div>
+              <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+                <div>
+                  <div class="text-gray-400">ფასი</div>
+                  <div id="best-sell-price">120.52 USDC</div>
+                </div>
+                <div>
+                  <div class="text-gray-400">საკომისიო</div>
+                  <div id="best-sell-fee">0.25%</div>
+                </div>
+                <div>
+                  <div class="text-gray-400">გაზის საფასური</div>
+                  <div id="best-sell-gas">0.000004 SOL</div>
+                </div>
+                <div>
+                  <div class="text-gray-400">გასვლის ბარიერი</div>
+                  <div id="best-sell-min">0.1 SOL</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Arbitrage Opportunity Panel -->
+          <div id="arbitrage-opportunity-panel" class="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-lg p-4 mb-4">
             <div class="flex justify-between items-center mb-2">
-              <div class="text-sm">საუკეთესო ყიდვა-გაყიდვის შესაძლებლობები</div>
-              <select id="broker-token-pair" class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1">
-                <option value="SOL_USDC">SOL/USDC</option>
-                <option value="SOL_USDT">SOL/USDT</option>
-                <option value="BTC_USDC">BTC/USDC</option>
-                <option value="ETH_USDC">ETH/USDC</option>
-                <option value="JUP_USDC">JUP/USDC</option>
-                <option value="SOL_BTC">SOL/BTC</option>
-                <option value="SOL_ETH">SOL/ETH</option>
-                <option value="RAY_USDC">RAY/USDC</option>
-              </select>
+              <div class="text-sm font-medium text-indigo-200">საუკეთესო არბიტრაჟის შესაძლებლობა:</div>
+              <div class="text-sm text-white font-bold bg-indigo-500 bg-opacity-50 px-2 py-1 rounded" id="arb-profit-percent">+0.58%</div>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <!-- Buy Side -->
-              <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
-                <div class="text-sm font-medium text-green-400 mb-2">საუკეთესო ყიდვა:</div>
-                <div id="best-buy-dex" class="text-lg font-bold">Jupiter</div>
-                <div class="grid grid-cols-2 gap-2 text-sm mt-2">
-                  <div>
-                    <div class="text-gray-400">ფასი</div>
-                    <div id="best-buy-price">120.45 USDC</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">საკომისიო</div>
-                    <div id="best-buy-fee">0.03%</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">გაზის საფასური</div>
-                    <div id="best-buy-gas">0.000005 SOL</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">მინ. შესვლა</div>
-                    <div id="best-buy-min">0.01 SOL</div>
-                  </div>
-                </div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <div class="text-indigo-200">ყიდვა</div>
+                <div class="font-medium" id="arb-buy-dex">Jupiter</div>
               </div>
-              
-              <!-- Sell Side -->
-              <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
-                <div class="text-sm font-medium text-red-400 mb-2">საუკეთესო გაყიდვა:</div>
-                <div id="best-sell-dex" class="text-lg font-bold">Raydium</div>
-                <div class="grid grid-cols-2 gap-2 text-sm mt-2">
-                  <div>
-                    <div class="text-gray-400">ფასი</div>
-                    <div id="best-sell-price">120.52 USDC</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">საკომისიო</div>
-                    <div id="best-sell-fee">0.25%</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">გაზის საფასური</div>
-                    <div id="best-sell-gas">0.000004 SOL</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">გასვლის ბარიერი</div>
-                    <div id="best-sell-min">0.1 SOL</div>
-                  </div>
-                </div>
+              <div>
+                <div class="text-indigo-200">გაყიდვა</div>
+                <div class="font-medium" id="arb-sell-dex">Raydium</div>
+              </div>
+              <div>
+                <div class="text-indigo-200">მინ. რაოდენობა</div>
+                <div class="font-medium" id="arb-min-amount">5.42 SOL</div>
+              </div>
+              <div>
+                <div class="text-indigo-200">საკომისიოს შემდეგ მოგება</div>
+                <div class="font-medium text-green-300" id="arb-net-profit">0.58%</div>
               </div>
             </div>
             
-            <!-- Arbitrage Opportunity Panel -->
-            <div id="arbitrage-opportunity-panel" class="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-lg p-4 mb-4">
-              <div class="flex justify-between items-center mb-2">
-                <div class="text-sm font-medium text-indigo-200">საუკეთესო არბიტრაჟის შესაძლებლობა:</div>
-                <div class="text-sm text-white font-bold bg-indigo-500 bg-opacity-50 px-2 py-1 rounded" id="arb-profit-percent">+0.58%</div>
-              </div>
-              
-              <div class="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div class="text-indigo-200">ყიდვა</div>
-                  <div class="font-medium" id="arb-buy-dex">Jupiter</div>
-                </div>
-                <div>
-                  <div class="text-indigo-200">გაყიდვა</div>
-                  <div class="font-medium" id="arb-sell-dex">Raydium</div>
-                </div>
-                <div>
-                  <div class="text-indigo-200">მინ. რაოდენობა</div>
-                  <div class="font-medium" id="arb-min-amount">5.42 SOL</div>
-                </div>
-                <div>
-                  <div class="text-indigo-200">საკომისიოს შემდეგ მოგება</div>
-                  <div class="font-medium text-green-300" id="arb-net-profit">0.58%</div>
-                </div>
-              </div>
-              
-              <div class="mt-3">
-                <button id="execute-arbitrage" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm transition">
-                  შესრულება
-                </button>
-              </div>
+            <div class="mt-3">
+              <button id="execute-arbitrage" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm transition">
+                შესრულება
+              </button>
             </div>
-            
-            <!-- Current Gas Status -->
-            <div class="bg-gray-800 bg-opacity-30 rounded-lg p-3 flex justify-between items-center">
-              <div>
-                <div class="text-xs text-gray-400">გაზის მდგომარეობა</div>
-                <div class="text-sm font-medium" id="gas-status">ნორმალური</div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-400">საშუალო დანაზოგი</div>
-                <div class="text-sm font-medium text-green-400" id="avg-savings">0.42%</div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-400">ბოლო განახლება</div>
-                <div class="text-sm" id="broker-last-update">30 წმ წინ</div>
-              </div>
+          </div>
+          
+          <!-- Current Gas Status -->
+          <div class="bg-gray-800 bg-opacity-30 rounded-lg p-3 flex justify-between items-center">
+            <div>
+              <div class="text-xs text-gray-400">გაზის მდგომარეობა</div>
+              <div class="text-sm font-medium" id="gas-status">ნორმალური</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-400">საშუალო დანაზოგი</div>
+              <div class="text-sm font-medium text-green-400" id="avg-savings">0.42%</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-400">ბოლო განახლება</div>
+              <div class="text-sm" id="broker-last-update">30 წმ წინ</div>
             </div>
           </div>
         </div>
@@ -646,279 +864,25 @@
   </footer>
   
   <!-- Optimized JavaScript loading -->
+  <!-- Primary scripts loaded in the header -->
+  <script src="wallet-connect.js" defer></script>
+  <script src="services.js" defer></script>
+  <script src="jupiter-api.js" defer></script>
+  <script src="arbitrage-ui.js" defer></script>
+  <script src="trading-dashboard.js" defer></script>
+  
   <!-- Performance and core scripts loaded first -->
   <script src="performance.js"></script>
   <script src="prices.js" defer></script>
   
   <!-- Secondary scripts loaded with defer -->
-  <script src="arbitrage-ui.js" defer></script>
-  
-  <!-- Token Price UI Script -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // ტოკენების ფასების ცხრილის ელემენტი
-      const tokenPricesBody = document.getElementById('token-prices-body');
-      
-      // ფასების განახლების ფუნქცია
-      async function updateTokenPrices() {
-        try {
-          // Jupiter API-დან ფასების მიღება
-          const tokenPrices = await window.jupiterAPI.getAllTokenPrices();
-          
-          if (!tokenPrices || Object.keys(tokenPrices).length === 0) {
-            console.error('No token prices received');
-            return;
-          }
-          
-          // ცხრილის გასუფთავება
-          tokenPricesBody.innerHTML = '';
-          
-          // დავალაგოთ ტოკენები: ჯერ BASE_TOKENS, შემდეგ დანარჩენი ანბანურად
-          const baseTokens = window.jupiterAPI.BASE_TOKENS;
-          
-          // დავალაგოთ ყველა ტოკენი
-          const sortedTokens = Object.keys(tokenPrices).sort((a, b) => {
-            // თუ ორივე ან არცერთი არის საბაზისო ტოკენი, დავალაგოთ ანბანურად
-            const aIsBase = baseTokens.includes(a);
-            const bIsBase = baseTokens.includes(b);
-            
-            if (aIsBase && !bIsBase) return -1;
-            if (!aIsBase && bIsBase) return 1;
-            if (aIsBase && bIsBase) {
-              return baseTokens.indexOf(a) - baseTokens.indexOf(b);
-            }
-            
-            return a.localeCompare(b);
-          });
-          
-          // ცხრილის შევსება
-          sortedTokens.forEach(symbol => {
-            const tokenData = tokenPrices[symbol];
-            if (!tokenData) return;
-            
-            const price = parseFloat(tokenData.price).toFixed(tokenData.price < 0.01 ? 6 : 4);
-            const change = parseFloat(tokenData.change24h || 0).toFixed(2);
-            const isPositiveChange = change >= 0;
-            
-            const row = document.createElement('tr');
-            row.className = 'border-b border-gray-800 hover:bg-gray-800/30';
-            
-            row.innerHTML = `
-              <td class="py-2">${symbol}</td>
-              <td class="text-right py-2">$${price}</td>
-              <td class="text-right py-2 ${isPositiveChange ? 'text-green-400' : 'text-red-400'}">                
-                ${isPositiveChange ? '+' : ''}${change}%
-              </td>
-            `;
-            
-            tokenPricesBody.appendChild(row);
-          });
-          
-          // განახლების დროის განახლება
-          document.getElementById('last-update-time').textContent = new Date().toLocaleTimeString();
-          
-        } catch (error) {
-          console.error('Error updating token prices:', error);
-          tokenPricesBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-red-400">შეცდომა ფასების მიღებისას: ${error.message}</td></tr>`;
-        }
-      }
-      
-      // პირველი განახლება
-      updateTokenPrices();
-      
-      // განახლება ყოველ 2 წამში
-      setInterval(updateTokenPrices, 2000);
-      
-      // დავუმატოთ სლუშენერი სათაურზე, რომ ხელით განახლდეს
-      document.querySelector('#token-prices-table').parentElement.parentElement.querySelector('h2').addEventListener('click', updateTokenPrices);
-    });
-    
-    // Update the current time display
-    function updateCurrentTime() {
-      const now = new Date();
-      const options = { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit', 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit',
-        hour12: false
-      };
-      
-      const timeElement = document.getElementById('current-time');
-      if (timeElement) {
-        timeElement.textContent = now.toLocaleString('ka-GE', options).replace(',', '');
-      }
-    }
-    
-    // Initialize the dashboard
-    document.addEventListener('DOMContentLoaded', function() {
-      // Update time every second
-      updateCurrentTime();
-      setInterval(updateCurrentTime, 1000);
-      
-      // Set up sliders to update their displayed values
-      document.querySelectorAll('.risk-slider').forEach(slider => {
-        const valueDisplay = slider.parentElement.querySelector('.parameter-value');
-        
-        slider.addEventListener('input', function() {
-          if (this.getAttribute('min') === '-10') {
-            valueDisplay.textContent = `${this.value}%`;
-          } else {
-            valueDisplay.textContent = `${this.value}${this.getAttribute('step') ? '%' : ' SOL'}`;
-          }
-          
-          // Update risk gauge based on average of all sliders
-          const allSliders = document.querySelectorAll('.risk-slider');
-          let riskScore = 0;
-          
-          allSliders.forEach(s => {
-            const min = parseFloat(s.getAttribute('min'));
-            const max = parseFloat(s.getAttribute('max'));
-            const val = parseFloat(s.value);
-            const normalized = (val - min) / (max - min);
-            
-            // Invert for negative values like stop-loss
-            const contribution = s.getAttribute('min') === '-10' ? 1 - normalized : normalized;
-            riskScore += contribution;
-          });
-          
-          const avgRiskScore = (riskScore / allSliders.length) * 100;
-          document.querySelector('.risk-gauge-fill').style.width = `${avgRiskScore}%`;
-          document.querySelector('.text-xs.text-gray-400.mt-1').textContent = 
-            `${avgRiskScore < 30 ? 'დაბალი' : avgRiskScore < 60 ? 'საშუალო' : 'მაღალი'} - ${Math.round(avgRiskScore)}% მაქსიმალური რისკის`;
-        });
-      });
-      
-      // Toggle advanced arbitrage section
-      const toggleAdvancedBtn = document.getElementById('toggle-advanced-arbitrage');
-      const hideAdvancedBtn = document.getElementById('hide-advanced-arbitrage');
-      const advancedContainer = document.getElementById('advanced-arbitrage-container');
-      
-      if (toggleAdvancedBtn && hideAdvancedBtn && advancedContainer) {
-        toggleAdvancedBtn.addEventListener('click', function() {
-          advancedContainer.classList.remove('hidden');
-          toggleAdvancedBtn.classList.add('hidden');
-        });
-        
-        hideAdvancedBtn.addEventListener('click', function() {
-          advancedContainer.classList.add('hidden');
-          toggleAdvancedBtn.classList.remove('hidden');
-        });
-      }
-      
-      // Initialize performance report
-      const refreshPerfBtn = document.getElementById('refresh-performance');
-      if (refreshPerfBtn && window.solanaAnalytics) {
-        refreshPerfBtn.addEventListener('click', function() {
-          const reportElement = document.getElementById('performance-report');
-          if (reportElement && window.solanaAnalytics.performanceReporter) {
-            window.solanaAnalytics.performanceReporter.generateReport(reportElement);
-          }
-        });
-        
-        // Initial render after a slight delay
-        setTimeout(() => {
-          const reportElement = document.getElementById('performance-report');
-          if (reportElement && window.solanaAnalytics.performanceReporter) {
-            window.solanaAnalytics.performanceReporter.generateReport(reportElement);
-          }
-        }, 1000);
-      }
-      
-      // Initialize market analysis
-      const marketContainer = document.getElementById('market-analysis-container');
-      if (marketContainer && window.solanaAnalytics) {
-        const timeframeButtons = marketContainer.querySelectorAll('[data-timeframe]');
-        
-        timeframeButtons.forEach(button => {
-          button.addEventListener('click', function() {
-            const timeframe = parseInt(this.dataset.timeframe, 10);
-            
-            // Highlight active button
-            timeframeButtons.forEach(btn => btn.classList.remove('bg-blue-500'));
-            this.classList.add('bg-blue-500');
-            
-            // Update charts
-            document.querySelectorAll('.market-token-chart').forEach(chartEl => {
-              const token = chartEl.dataset.token;
-              if (token && window.solanaAnalytics.marketVisualizer) {
-                const tokenData = window.solanaAnalytics.marketAnalysis.data[token];
-                if (tokenData) {
-                  window.solanaAnalytics.marketVisualizer.renderPriceChart(chartEl, token, tokenData.priceHistory, { timeframe });
-                }
-              }
-            });
-          });
-        });
-        
-        // Initialize token analysis after a slight delay
-        setTimeout(() => {
-          if (window.prices && window.solanaAnalytics.marketAnalysis) {
-            window.solanaAnalytics.marketAnalysis.updateAnalysis(window.prices);
-            
-            document.querySelectorAll('.market-token-analysis').forEach(analysisEl => {
-              const token = analysisEl.dataset.token;
-              if (token && window.solanaAnalytics.marketVisualizer) {
-                window.solanaAnalytics.marketVisualizer.renderMarketMetrics(analysisEl, token, window.solanaAnalytics.marketAnalysis.data);
-              }
-            });
-            
-            document.querySelectorAll('.market-token-chart').forEach(chartEl => {
-              const token = chartEl.dataset.token;
-              if (token && window.solanaAnalytics.marketVisualizer) {
-                const tokenData = window.solanaAnalytics.marketAnalysis.data[token];
-                if (tokenData) {
-                  window.solanaAnalytics.marketVisualizer.renderPriceChart(chartEl, token, tokenData.priceHistory, { timeframe: 24 });
-                }
-              }
-            });
-          }
-        }, 1200);
-      }
-      
-      // სიმულაციის მიზნებისთვის, დავამატოთ მოდელური ფასების მონაცემები
-      window.prices = {
-        SOL: { price: 120.85, change24h: 2.13 },
-        BTC: { price: 67423.50, change24h: -0.42 },
-        ETH: { price: 3214.75, change24h: 1.53 },
-        JUP: { price: 1.43, change24h: 5.82 },
-        RAY: { price: 0.72, change24h: -2.15 }
-      };
-      
-      // ფასების ცხრილის შევსება
-      const priceTableBody = document.getElementById('price-table-body');
-      if (priceTableBody && window.prices) {
-        let tableHTML = '';
-        
-        for (const [token, data] of Object.entries(window.prices)) {
-          const changeClass = data.change24h >= 0 ? 'price-up' : 'price-down';
-          const changeSymbol = data.change24h >= 0 ? '+' : '';
-          
-          tableHTML += `
-            <tr>
-              <td class="py-2">${token}</td>
-              <td class="text-right py-2">$${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td class="text-right py-2 ${changeClass}">${changeSymbol}${data.change24h.toFixed(2)}%</td>
-            </tr>
-          `;
-        }
-        
-        priceTableBody.innerHTML = tableHTML;
-      }
-    });
-  </script>
-  
-  <!-- Core Scripts -->
-  <script src="database.js"></script>
-  <script src="services.js"></script>
-  <script src="advanced-arbitrage.js"></script>
-  <script src="transactions-engine.js"></script>
+  <script src="database.js" defer></script>
+  <script src="advanced-arbitrage.js" defer></script>
+  <script src="transactions-engine.js" defer></script>
   
   <!-- New Broker Comparison Feature -->
-  <script src="brokers.js"></script>
-  <script src="broker-ui.js"></script>
+  <script src="brokers.js" defer></script>
+  <script src="broker-ui.js" defer></script>
   
   <!-- Add token API script BEFORE other scripts -->
   <script>

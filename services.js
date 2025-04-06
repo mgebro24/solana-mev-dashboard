@@ -52,7 +52,7 @@ const services = {
       type: null            // 'phantom', 'solflare'
     },
     
-    // Solana საფულეების პროვაიდერები
+    // Solana საფულის პროვაიდერები
     providers: {
       phantom: null,
       solflare: null
@@ -762,236 +762,339 @@ const services = {
     
     // Close network WebSocket connection
     closeNetworkSocket() {
-      if (this.simulatedNetworkSocket) {
-        clearInterval(this.simulatedNetworkSocket);
-        this.simulatedNetworkSocket = null;
-      }
-      
-      if (networkSocket && networkSocket.readyState === WebSocket.OPEN) {
-        networkSocket.close();
-        networkSocket = null;
+      try {
+        if (this.simulatedNetworkSocket) {
+          clearInterval(this.simulatedNetworkSocket);
+          this.simulatedNetworkSocket = null;
+        }
+        
+        if (networkSocket && networkSocket.readyState === WebSocket.OPEN) {
+          networkSocket.close();
+          networkSocket = null;
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error closing network socket:', error);
+        return false;
       }
     }
   },
   
-  // სერვისების ინიციალიზაცია
-  initialize() {
-    console.log('Initializing services module...');
-    
-    // API სერვისების ინიციალიზაცია
-    this.api.initialize();
-    
-    // WebSocket სერვისების ინიციალიზაცია
-    this.sockets.initialize();
-    
-    // Solana საფულის სერვისების ინიციალიზაცია
-    if (window.solana && window.solana.isPhantom) {
-      this.wallet.initPhantom();
-    }
-    
-    return true;
-  }
-};
-        const randomToken = tokens[Math.floor(Math.random() * tokens.length)];
-        const currentPrice = dataCache.prices.data[randomToken].price;
-        const randomChange = (Math.random() * 0.01 - 0.005) * currentPrice; // -0.5% to +0.5%
-        
-        const update = {
-          token: randomToken,
-          price: currentPrice + randomChange,
-          timestamp: Date.now()
-        };
-        
-        // Update the cache
-        if (dataCache.prices.data[randomToken]) {
-          dataCache.prices.data[randomToken].price = update.price;
-          dataCache.prices.data[randomToken].history.push(update.price);
+  // Starts the interval for generating and updating arbitrage opportunities
+  startArbitrageUpdates(intervalMs = 5000) {
+    try {
+      // Clear existing interval if any
+      if (this.arbitrageUpdateInterval) {
+        clearInterval(this.arbitrageUpdateInterval);
+      }
+      
+      // Set up new interval for updating arbitrage opportunities
+      this.arbitrageUpdateInterval = setInterval(() => {
+        try {
+          // Generate new sample data (temporary for testing)
+          const opportunities = {
+            simple: this.generateSampleSimpleArbitrageOpportunities(),
+            triangular: this.generateSampleTriangularArbitrageOpportunities(),
+            complex: this.generateSampleComplexArbitrageOpportunities()
+          };
           
-          if (dataCache.prices.data[randomToken].history.length > 48) {
-            dataCache.prices.data[randomToken].history.shift();
+          // Dispatch event with all opportunities
+          const event = new CustomEvent('arbitrage-opportunities', {
+            detail: opportunities
+          });
+          
+          window.dispatchEvent(event);
+          console.log('Dispatched arbitrage opportunities event', opportunities);
+          
+          // Update last update timestamp
+          this.lastArbitrageUpdate = Date.now();
+          
+          // Update UI element if exists
+          const lastUpdateElement = document.getElementById('broker-last-update');
+          if (lastUpdateElement) {
+            lastUpdateElement.textContent = 'ახლახანს';
+          }
+        } catch (err) {
+          console.error('Error updating arbitrage opportunities:', err);
+        }
+      }, intervalMs);
+      
+      console.log(`Started arbitrage updates with interval: ${intervalMs}ms`);
+      return true;
+    } catch (error) {
+      console.error('Error starting arbitrage updates:', error);
+      return false;
+    }
+  },
+  
+  // Stop arbitrage updates
+  stopArbitrageUpdates() {
+    try {
+      if (this.arbitrageUpdateInterval) {
+        clearInterval(this.arbitrageUpdateInterval);
+        this.arbitrageUpdateInterval = null;
+        console.log('Stopped arbitrage updates');
+      }
+      return true;
+    } catch (error) {
+      console.error('Error stopping arbitrage updates:', error);
+      return false;
+    }
+  },
+  
+  // Generate sample complex arbitrage opportunities for testing
+  generateSampleComplexArbitrageOpportunities() {
+    try {
+      const tokens = Object.keys(this.tokens);
+      const opportunities = [];
+      
+      // Generate 1-3 complex opportunities
+      const count = Math.floor(Math.random() * 3) + 1;
+      
+      for (let i = 0; i < count; i++) {
+        // Create a random path of 4-6 tokens
+        const pathLength = Math.floor(Math.random() * 3) + 4; // 4-6 tokens
+        const tokenPath = [];
+        
+        // Ensure we don't have duplicates in sequence
+        while (tokenPath.length < pathLength) {
+          const randomToken = tokens[Math.floor(Math.random() * tokens.length)];
+          if (tokenPath.length === 0 || tokenPath[tokenPath.length - 1] !== randomToken) {
+            tokenPath.push(randomToken);
           }
         }
         
-        // Dispatch custom event for price update
-        const event = new CustomEvent('price-update', { detail: update });
-        window.dispatchEvent(event);
-      }, 3000);
-      
-      return true;
-    } catch (error) {
-      console.error('Error initializing price WebSocket:', error);
-      return false;
-    }
-  },
-  
-  // Close price WebSocket connection
-  closePriceSocket() {
-    if (this.simulatedPriceSocket) {
-      clearInterval(this.simulatedPriceSocket);
-      this.simulatedPriceSocket = null;
-    }
-    
-    if (priceSocket && priceSocket.readyState === WebSocket.OPEN) {
-      priceSocket.close();
-      priceSocket = null;
-    }
-  },
-  
-  // Initialize transaction WebSocket connection
-  initTransactionSocket() {
-    if (transactionSocket) {
-      this.closeTransactionSocket();
-    }
-    
-    try {
-      console.log('Initializing transaction WebSocket...');
-      
-      // Simulate transaction WebSocket
-      this.simulatedTransactionSocket = setInterval(() => {
-        // Generate random transaction
-        const tokens = ['SOL', 'BTC', 'ETH', 'USDC', 'USDT', 'JUP', 'RAY'];
-        const dexes = ['Jupiter', 'Raydium', 'Orca', 'OpenBook'];
+        // Ensure the path is circular
+        if (tokenPath[0] !== tokenPath[tokenPath.length - 1]) {
+          tokenPath.push(tokenPath[0]);
+        }
         
-        const fromToken = tokens[Math.floor(Math.random() * tokens.length)];
-        let toToken;
-        do {
-          toToken = tokens[Math.floor(Math.random() * tokens.length)];
-        } while (toToken === fromToken);
+        // Select random exchanges for each step
+        const exchanges = [];
+        const allExchanges = ['Jupiter', 'Raydium', 'Orca', 'Serum', 'Saber'];
         
-        const amount = (Math.random() * 20 + 0.5).toFixed(2);
-        const dex = dexes[Math.floor(Math.random() * dexes.length)];
-        const success = Math.random() > 0.1; // 90% success rate
+        for (let j = 0; j < tokenPath.length - 1; j++) {
+          const randomExchange = allExchanges[Math.floor(Math.random() * allExchanges.length)];
+          exchanges.push(randomExchange);
+        }
         
-        const transaction = {
-          id: 'tx_' + Math.random().toString(36).substring(2, 10),
-          timestamp: Date.now(),
-          fromToken,
-          toToken,
-          amount: parseFloat(amount),
-          dex,
-          status: success ? 'completed' : 'failed',
-          profit: success ? (Math.random() * amount * 0.03).toFixed(3) : '0',
-          gasUsed: (Math.random() * 0.0001).toFixed(6)
-        };
-        
-        // Dispatch custom event for transaction update
-        const event = new CustomEvent('transaction-update', { detail: transaction });
-        window.dispatchEvent(event);
-      }, 45000); // New transaction every 45 seconds
-      
-      return true;
-    } catch (error) {
-      console.error('Error initializing transaction WebSocket:', error);
-      return false;
-    }
-  },
-  
-  // Close transaction WebSocket connection
-  closeTransactionSocket() {
-    if (this.simulatedTransactionSocket) {
-      clearInterval(this.simulatedTransactionSocket);
-      this.simulatedTransactionSocket = null;
-    }
-    
-    if (transactionSocket && transactionSocket.readyState === WebSocket.OPEN) {
-      transactionSocket.close();
-      transactionSocket = null;
-    }
-  },
-  
-  // Initialize network WebSocket for arbitrage opportunities
-  initNetworkSocket() {
-    if (networkSocket) {
-      this.closeNetworkSocket();
-    }
-    
-    try {
-      console.log('Initializing network WebSocket for arbitrage opportunities...');
-      
-      // Simulate network WebSocket for arbitrage opportunities
-      this.simulatedNetworkSocket = setInterval(() => {
-        // Generate random arbitrage opportunity
-        const tokens = ['SOL', 'BTC', 'ETH', 'USDC', 'USDT', 'JUP', 'RAY'];
-        const dexes = ['Jupiter', 'Raydium', 'Orca', 'OpenBook'];
-        
-        const baseToken = tokens[Math.floor(Math.random() * tokens.length)];
-        let quoteToken;
-        do {
-          quoteToken = tokens[Math.floor(Math.random() * tokens.length)];
-        } while (quoteToken === baseToken);
-        
-        const sourceDex = dexes[Math.floor(Math.random() * dexes.length)];
-        let targetDex;
-        do {
-          targetDex = dexes[Math.floor(Math.random() * dexes.length)];
-        } while (targetDex === sourceDex);
-        
-        // Generate profit percentage (0.1% to 2.5%)
+        // Calculate a random profit percentage (0.1% to 2.5%)
         const profitPercent = (Math.random() * 2.4 + 0.1).toFixed(2);
         
-        const arbitrage = {
-          id: 'arb_' + Math.random().toString(36).substring(2, 10),
-          timestamp: Date.now(),
-          baseToken,
-          quoteToken,
-          sourceDex,
-          targetDex,
-          profitPercent: parseFloat(profitPercent),
-          estimatedProfit: (Math.random() * 0.5).toFixed(3),
-          confidence: Math.random() * 100 // 0-100%
-        };
-        
-        // Dispatch custom event for arbitrage opportunity
-        const event = new CustomEvent('arbitrage-opportunity', { detail: arbitrage });
-        window.dispatchEvent(event);
-        
-        // 20% chance to generate a triangular arbitrage opportunity
-        if (Math.random() < 0.2) {
-          let intermediateToken;
-          do {
-            intermediateToken = tokens[Math.floor(Math.random() * tokens.length)];
-          } while (intermediateToken === baseToken || intermediateToken === quoteToken);
-          
-          const triangularArbitrage = {
-            id: 'tri_' + Math.random().toString(36).substring(2, 10),
-            timestamp: Date.now(),
-            type: 'triangular',
-            path: [baseToken, intermediateToken, quoteToken, baseToken],
-            exchanges: [
-              dexes[Math.floor(Math.random() * dexes.length)],
-              dexes[Math.floor(Math.random() * dexes.length)],
-              dexes[Math.floor(Math.random() * dexes.length)]
-            ],
-            profitPercent: (Math.random() * 3.4 + 0.3).toFixed(2),
-            estimatedProfit: (Math.random() * 0.7).toFixed(3),
-            complexity: 'medium',
-            executionTime: Math.floor(Math.random() * 500 + 500) // 500-1000ms
-          };
-          
-          // Dispatch custom event for triangular arbitrage opportunity
-          const triangularEvent = new CustomEvent('triangular-arbitrage', { detail: triangularArbitrage });
-          window.dispatchEvent(triangularEvent);
+        // Determine risk level based on profit
+        let riskLevel;
+        if (profitPercent < 0.5) {
+          riskLevel = 'low';
+        } else if (profitPercent < 1.5) {
+          riskLevel = 'medium';
+        } else {
+          riskLevel = 'high';
         }
-      }, 25000); // New arbitrage opportunity every 25 seconds
+        
+        // Create the opportunity object
+        opportunities.push({
+          id: `complex_${Date.now()}_${i}`,
+          type: 'complex',
+          tokenPath,
+          exchanges,
+          profitPercent,
+          riskLevel,
+          estimatedGas: (Math.random() * 0.001 + 0.002).toFixed(6),
+          minAmount: (Math.random() * 10 + 1).toFixed(2),
+          complexity: 'high',
+          executionTime: Math.floor(Math.random() * 1000 + 1000) // 1000-2000ms
+        });
+      }
       
-      return true;
+      return opportunities;
     } catch (error) {
-      console.error('Error initializing network WebSocket:', error);
-      return false;
+      console.error('Error generating sample complex arbitrage opportunities:', error);
+      return [];
     }
   },
   
-  // Close network WebSocket connection
-  closeNetworkSocket() {
-    if (this.simulatedNetworkSocket) {
-      clearInterval(this.simulatedNetworkSocket);
-      this.simulatedNetworkSocket = null;
+  // Calculate arbitrage opportunities
+  calculateArbitrageOpportunities() {
+    try {
+      // Generate some sample arbitrage opportunities for testing
+      const sampleOpportunities = {
+        simple: this.generateSampleSimpleArbitrage(),
+        triangular: this.generateSampleTriangularArbitrage(),
+        complex: this.generateSampleComplexArbitrage(),
+        timestamp: Date.now()
+      };
+      
+      // Dispatch event with all arbitrage opportunities
+      const event = new CustomEvent('arbitrage-opportunities', {
+        detail: sampleOpportunities
+      });
+      
+      window.dispatchEvent(event);
+      
+      return sampleOpportunities;
+    } catch (error) {
+      console.error('Error calculating arbitrage opportunities:', error);
+      return {
+        simple: [],
+        triangular: [],
+        complex: [],
+        timestamp: Date.now(),
+        error: error.message
+      };
+    }
+  },
+  
+  // Generate sample simple arbitrage opportunities
+  generateSampleSimpleArbitrage() {
+    const opportunities = [];
+    const tokens = ['SOL', 'USDC', 'ETH', 'BTC', 'USDT', 'RAY', 'MSOL'];
+    const dexes = ['Jupiter', 'Raydium', 'Orca', 'Openbook'];
+    
+    // Generate 2-3 opportunities
+    for (let i = 0; i < Math.floor(Math.random() * 2) + 2; i++) {
+      const tokenIn = tokens[Math.floor(Math.random() * tokens.length)];
+      const tokenOut = tokens[Math.floor(Math.random() * tokens.length)];
+      
+      if (tokenIn === tokenOut) continue;
+      
+      const dexBuy = dexes[Math.floor(Math.random() * dexes.length)];
+      let dexSell;
+      do {
+        dexSell = dexes[Math.floor(Math.random() * dexes.length)];
+      } while (dexSell === dexBuy);
+      
+      const priceBuy = parseFloat((Math.random() * 10 + 90).toFixed(2)); // 90-100
+      const priceSell = parseFloat((priceBuy * (1 + (Math.random() * 0.05 + 0.01))).toFixed(2)); // 1-6% higher
+      
+      const profitPercent = ((priceSell / priceBuy) - 1) * 100;
+      
+      opportunities.push({
+        type: 'simple',
+        tokenIn,
+        tokenOut,
+        dexBuy,
+        dexSell,
+        priceBuy,
+        priceSell,
+        profitPercent: profitPercent.toFixed(2),
+        estimatedProfit: ((priceSell - priceBuy) * 0.1).toFixed(4), // 0.1 token
+        timestamp: Date.now()
+      });
     }
     
-    if (networkSocket && networkSocket.readyState === WebSocket.OPEN) {
-      networkSocket.close();
-      networkSocket = null;
+    return opportunities;
+  },
+  
+  // Generate sample triangular arbitrage opportunities
+  generateSampleTriangularArbitrage() {
+    const opportunities = [];
+    const tokens = ['SOL', 'USDC', 'ETH', 'BTC', 'USDT', 'RAY', 'MSOL'];
+    const dexes = ['Jupiter', 'Raydium', 'Orca', 'Openbook'];
+    
+    // Generate 1-2 opportunities
+    for (let i = 0; i < Math.floor(Math.random() * 2) + 1; i++) {
+      // Select three different tokens
+      const tokenIndices = [];
+      while (tokenIndices.length < 3) {
+        const index = Math.floor(Math.random() * tokens.length);
+        if (!tokenIndices.includes(index)) {
+          tokenIndices.push(index);
+        }
+      }
+      
+      const tokenA = tokens[tokenIndices[0]];
+      const tokenB = tokens[tokenIndices[1]];
+      const tokenC = tokens[tokenIndices[2]];
+      
+      // Random rates with a small arbitrage opportunity
+      const rateAB = parseFloat((1 + Math.random() * 0.5).toFixed(4));
+      const rateBC = parseFloat((1 + Math.random() * 0.5).toFixed(4));
+      const rateCA = parseFloat((1 / (rateAB * rateBC) * (1 + (Math.random() * 0.05 + 0.01))).toFixed(4));
+      
+      const profitPercent = ((rateAB * rateBC * rateCA) - 1) * 100;
+      
+      opportunities.push({
+        type: 'triangular',
+        route: [
+          { from: tokenA, to: tokenB, rate: rateAB, dex: dexes[Math.floor(Math.random() * dexes.length)] },
+          { from: tokenB, to: tokenC, rate: rateBC, dex: dexes[Math.floor(Math.random() * dexes.length)] },
+          { from: tokenC, to: tokenA, rate: rateCA, dex: dexes[Math.floor(Math.random() * dexes.length)] }
+        ],
+        profitPercent: profitPercent.toFixed(2),
+        estimatedProfit: ((profitPercent / 100) * parseFloat((Math.random() * 5 + 5).toFixed(2))).toFixed(4), // $5-10 profit
+        timestamp: Date.now()
+      });
     }
+    
+    return opportunities;
+  },
+  
+  // Generate sample complex arbitrage opportunities
+  generateSampleComplexArbitrage() {
+    const opportunities = [];
+    const tokens = ['SOL', 'USDC', 'ETH', 'BTC', 'USDT', 'RAY', 'MSOL', 'BONK', 'ORCA'];
+    const dexes = ['Jupiter', 'Raydium', 'Orca', 'Openbook'];
+    
+    // Just one complex opportunity
+    if (Math.random() > 0.3) { // 70% chance to get a complex opp
+      const path = [];
+      const usedTokens = new Set();
+      const pathLength = Math.floor(Math.random() * 2) + 4; // 4-5 steps
+      
+      let currentToken = tokens[Math.floor(Math.random() * tokens.length)];
+      usedTokens.add(currentToken);
+      
+      for (let j = 0; j < pathLength; j++) {
+        let nextToken;
+        do {
+          nextToken = tokens[Math.floor(Math.random() * tokens.length)];
+        } while (usedTokens.has(nextToken) && usedTokens.size < tokens.length);
+        
+        usedTokens.add(nextToken);
+        
+        path.push({
+          from: currentToken,
+          to: nextToken,
+          dex: dexes[Math.floor(Math.random() * dexes.length)],
+          rate: parseFloat((1 + Math.random() * 0.2).toFixed(4))
+        });
+        
+        currentToken = nextToken;
+      }
+      
+      // Close the loop
+      path.push({
+        from: currentToken,
+        to: path[0].from,
+        dex: dexes[Math.floor(Math.random() * dexes.length)],
+        rate: parseFloat((1 + Math.random() * 0.1).toFixed(4))
+      });
+      
+      // Calculate compound profit
+      let profitFactor = 1;
+      path.forEach(step => {
+        profitFactor *= step.rate;
+      });
+      
+      const profitPercent = (profitFactor - 1) * 100;
+      
+      opportunities.push({
+        type: 'complex',
+        path: path,
+        profitPercent: profitPercent.toFixed(2),
+        estimatedProfit: ((profitPercent / 100) * parseFloat((Math.random() * this.generateRandomInt(10, 20)).toFixed(2))).toFixed(4),
+        complexity: path.length > 5 ? 'high' : 'medium',
+        timestamp: Date.now()
+      });
+    }
+    
+    return opportunities;
+  },
+  
+  // Helper to generate random integer
+  generateRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 };
 
@@ -1205,3 +1308,26 @@ document.addEventListener('DOMContentLoaded', function() {
     webSocketService.initNetworkSocket();
   }, 2000);
 });
+
+// სერვისების ინიციალიზაცია
+services.initialize = async function() {
+  try {
+    console.log('Initializing services module...');
+    
+    // API სერვისების ინიციალიზაცია
+    this.api.initialize();
+    
+    // WebSocket სერვისების ინიციალიზაცია
+    this.sockets.initialize();
+    
+    // Solana საფულის სერვისების ინიციალიზაცია
+    if (window.solana && window.solana.isPhantom) {
+      this.wallet.initPhantom();
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error initializing services:', error);
+    return false;
+  }
+};
