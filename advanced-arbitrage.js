@@ -112,10 +112,18 @@ function estimateSuccessProbability(path, complexity, marketVolatility = 0.2) {
 
 // Function to render advanced arbitrage opportunities
 function renderAdvancedArbitrageOpportunities() {
-  const container = document.getElementById('advanced-arbitrage');
-  if (!container) return;
+  if (!domRefs.opportunitiesContainer) return;
   
-  container.innerHTML = '';
+  // Only recalculate if needed (every 5 seconds)
+  if (!shouldRecalculate() && perfCache.triangularOpps.length > 0) {
+    return; // Use cached data
+  }
+  
+  // Use document fragment for better performance
+  const fragment = document.createDocumentFragment();
+  
+  // Clear previous content
+  domRefs.opportunitiesContainer.innerHTML = '';
   
   // Add summary statistics
   const summaryDiv = document.createElement('div');
@@ -273,7 +281,54 @@ function renderAdvancedArbitrageOpportunities() {
 }
 
 // Initialize the advanced arbitrage section when DOM is loaded
+// Performance optimization cache objects
+const perfCache = {
+  triangularOpps: [],
+  historicalData: {},
+  liquidityAnalysis: {},
+  lastCalculationTime: 0
+};
+
+// Only recalculate every 5 seconds to improve performance
+function shouldRecalculate() {
+  const now = Date.now();
+  const timeSinceLastCalc = now - perfCache.lastCalculationTime;
+  if (timeSinceLastCalc > 5000) {
+    perfCache.lastCalculationTime = now;
+    return true;
+  }
+  return false;
+}
+
+// Improve DOM operations using fragments and caching references
+const domRefs = {};
+
+// Use debouncing for performance-heavy operations
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+// Lazy load data calculations
+const lazyCalculate = debounce(function() {
+  calculateTriangularArbitrage();
+  analyzeHistoricalPerformance();
+  analyzeLiquidity();
+}, 300);
+
+// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
+  // Cache DOM references for better performance
+  domRefs.opportunitiesContainer = document.getElementById('advanced-arbitrage-opportunities');
+  domRefs.liquidityContainer = document.getElementById('liquidity-analysis');
+  domRefs.historicalContainer = document.getElementById('historical-analysis');
+  domRefs.advancedContainer = document.getElementById('advanced-arbitrage');
+  domRefs.toggleBtn = document.getElementById('toggle-advanced-arbitrage');
+  domRefs.hideBtn = document.getElementById('hide-advanced-arbitrage');
+  
   renderAdvancedArbitrageOpportunities();
   
   // Update every 30 seconds

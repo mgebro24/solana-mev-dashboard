@@ -34,9 +34,6 @@
   
   <!-- Performance optimization script -->
   <script src="performance.js"></script>
-  
-  <!-- ინტერაქტიული გრაფიკებისთვის -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" defer></script>
 </head>
 <body>
   <!-- Animated background grid effect -->
@@ -170,138 +167,15 @@
           </div>
         </div>
         
-        <!-- Broker Comparison Section -->
-        <div class="glass p-4 rounded-lg mb-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-medium">საბროკეროების შედარება</h2>
-            <div class="text-xs bg-indigo-500 bg-opacity-30 text-indigo-200 px-2 py-1 rounded">რეალური დროის ფასები</div>
-          </div>
-          
-          <div class="mb-4">
-            <div class="flex justify-between items-center mb-2">
-              <div class="text-sm">საუკეთესო ყიდვა-გაყიდვის შესაძლებლობები</div>
-              <select id="broker-token-pair" class="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1">
-                <option value="SOL_USDC">SOL/USDC</option>
-                <option value="SOL_USDT">SOL/USDT</option>
-                <option value="BTC_USDC">BTC/USDC</option>
-                <option value="ETH_USDC">ETH/USDC</option>
-                <option value="JUP_USDC">JUP/USDC</option>
-                <option value="SOL_BTC">SOL/BTC</option>
-                <option value="SOL_ETH">SOL/ETH</option>
-                <option value="RAY_USDC">RAY/USDC</option>
-              </select>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <!-- Buy Side -->
-              <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
-                <div class="text-sm font-medium text-green-400 mb-2">საუკეთესო ყიდვა:</div>
-                <div id="best-buy-dex" class="text-lg font-bold">Jupiter</div>
-                <div class="grid grid-cols-2 gap-2 text-sm mt-2">
-                  <div>
-                    <div class="text-gray-400">ფასი</div>
-                    <div id="best-buy-price">120.45 USDC</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">საკომისიო</div>
-                    <div id="best-buy-fee">0.03%</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">გაზის საფასური</div>
-                    <div id="best-buy-gas">0.000005 SOL</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">მინ. შესვლა</div>
-                    <div id="best-buy-min">0.01 SOL</div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Sell Side -->
-              <div class="bg-gray-800 bg-opacity-50 rounded-lg p-3">
-                <div class="text-sm font-medium text-red-400 mb-2">საუკეთესო გაყიდვა:</div>
-                <div id="best-sell-dex" class="text-lg font-bold">Raydium</div>
-                <div class="grid grid-cols-2 gap-2 text-sm mt-2">
-                  <div>
-                    <div class="text-gray-400">ფასი</div>
-                    <div id="best-sell-price">120.52 USDC</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">საკომისიო</div>
-                    <div id="best-sell-fee">0.25%</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">გაზის საფასური</div>
-                    <div id="best-sell-gas">0.000004 SOL</div>
-                  </div>
-                  <div>
-                    <div class="text-gray-400">გასვლის ბარიერი</div>
-                    <div id="best-sell-min">0.1 SOL</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Arbitrage Opportunity Panel -->
-            <div id="arbitrage-opportunity-panel" class="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-lg p-4 mb-4">
-              <div class="flex justify-between items-center mb-2">
-                <div class="text-sm font-medium text-indigo-200">საუკეთესო არბიტრაჟის შესაძლებლობა:</div>
-                <div class="text-sm text-white font-bold bg-indigo-500 bg-opacity-50 px-2 py-1 rounded" id="arb-profit-percent">+0.58%</div>
-              </div>
-              
-              <div class="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div class="text-indigo-200">ყიდვა</div>
-                  <div class="font-medium" id="arb-buy-dex">Jupiter</div>
-                </div>
-                <div>
-                  <div class="text-indigo-200">გაყიდვა</div>
-                  <div class="font-medium" id="arb-sell-dex">Raydium</div>
-                </div>
-                <div>
-                  <div class="text-indigo-200">მინ. რაოდენობა</div>
-                  <div class="font-medium" id="arb-min-amount">5.42 SOL</div>
-                </div>
-                <div>
-                  <div class="text-indigo-200">საკომისიოს შემდეგ მოგება</div>
-                  <div class="font-medium text-green-300" id="arb-net-profit">0.58%</div>
-                </div>
-              </div>
-              
-              <div class="mt-3">
-                <button id="execute-arbitrage" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm transition">
-                  შესრულება
-                </button>
-              </div>
-            </div>
-            
-            <!-- Current Gas Status -->
-            <div class="bg-gray-800 bg-opacity-30 rounded-lg p-3 flex justify-between items-center">
-              <div>
-                <div class="text-xs text-gray-400">გაზის მდგომარეობა</div>
-                <div class="text-sm font-medium" id="gas-status">ნორმალური</div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-400">საშუალო დანაზოგი</div>
-                <div class="text-sm font-medium text-green-400" id="avg-savings">0.42%</div>
-              </div>
-              <div>
-                <div class="text-xs text-gray-400">ბოლო განახლება</div>
-                <div class="text-sm" id="broker-last-update">30 წმ წინ</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
         <!-- Risk Management Section -->
         <div class="glass p-4 rounded-lg mb-6">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-medium">რისკის მართვა</h2>
-            <div class="text-xs bg-blue-500 bg-opacity-30 text-blue-200 px-2 py-1 rounded">საუკეთესო პრაქტიკა</div>
+            <button class="btn-neo py-1 px-2 text-xs">კონფიგურაციის შენახვა</button>
           </div>
           
-          <div class="mb-4">
-            <div class="text-sm mb-2">საერთო რისკის დონე</div>
+          <div class="glass p-3 rounded-lg mb-4">
+            <div class="text-sm mb-2">რისკის პროფილი</div>
             <div class="risk-gauge">
               <div class="risk-gauge-fill" style="width: 45%"></div>
             </div>
@@ -587,47 +461,7 @@
           }
         }, 1200);
       }
-      
-      // სიმულაციის მიზნებისთვის, დავამატოთ მოდელური ფასების მონაცემები
-      window.prices = {
-        SOL: { price: 120.85, change24h: 2.13 },
-        BTC: { price: 67423.50, change24h: -0.42 },
-        ETH: { price: 3214.75, change24h: 1.53 },
-        JUP: { price: 1.43, change24h: 5.82 },
-        RAY: { price: 0.72, change24h: -2.15 }
-      };
-      
-      // ფასების ცხრილის შევსება
-      const priceTableBody = document.getElementById('price-table-body');
-      if (priceTableBody && window.prices) {
-        let tableHTML = '';
-        
-        for (const [token, data] of Object.entries(window.prices)) {
-          const changeClass = data.change24h >= 0 ? 'price-up' : 'price-down';
-          const changeSymbol = data.change24h >= 0 ? '+' : '';
-          
-          tableHTML += `
-            <tr>
-              <td class="py-2">${token}</td>
-              <td class="text-right">$${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td class="text-right ${changeClass}">${changeSymbol}${data.change24h.toFixed(2)}%</td>
-            </tr>
-          `;
-        }
-        
-        priceTableBody.innerHTML = tableHTML;
-      }
     });
   </script>
-  
-  <!-- Core Scripts -->
-  <script src="database.js"></script>
-  <script src="services.js"></script>
-  <script src="advanced-arbitrage.js"></script>
-  <script src="transactions-engine.js"></script>
-  
-  <!-- New Broker Comparison Feature -->
-  <script src="brokers.js"></script>
-  <script src="broker-ui.js"></script>
 </body>
 </html>
