@@ -1,6 +1,7 @@
 /**
- * Services module for the Solana MEV Dashboard
- * Provides API integration, data fetching, and WebSocket support
+ * Services Module for Solana MEV Dashboard
+ * მსახურებების მოდული Solana MEV Dashboard-ისთვის, რომელიც უზრუნველყოფს API ინტეგრაციებს,
+ * WebSocket კონექშენებს და Solana საფულის ინტეგრაციებს
  */
 
 // API endpoints
@@ -37,296 +38,760 @@ function isCacheValid(cacheEntry, ttl) {
   return cacheEntry.data !== null && (Date.now() - cacheEntry.timestamp) < ttl;
 }
 
-// API Service
-const apiService = {
-  // Fetch with timeout and retry logic
-  async fetchWithRetry(url, options = {}, retries = 3, timeout = 5000) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+// მთავარი სერვისების ობიექტი
+const services = {
+  // Solana საფულის ინტეგრაციები
+  wallet: {
+    // მიმდინარე კონფიგურაცია
+    config: {
+      connected: false,
+      address: null,        // Solana საფულის მისამართი
+      balance: 0,           // SOL ბალანსი
+      network: 'mainnet-beta', // Solana ქსელი (mainnet-beta, testnet, devnet)
+      provider: null,       // Phantom საფულის პროვაიდერი
+      type: null            // 'phantom', 'solflare'
+    },
     
-    options.signal = controller.signal;
+    // Solana საფულეების პროვაიდერები
+    providers: {
+      phantom: null,
+      solflare: null
+    },
     
-    try {
-      const response = await fetch(url, options);
-      clearTimeout(timeoutId);
+    // Phantom საფულის ინიციალიზაცია
+    async initPhantom() {
+      console.log('Initializing Phantom wallet service...');
       
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} - ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      clearTimeout(timeoutId);
-      
-      if (error.name === 'AbortError') {
-        console.warn(`Request timeout for ${url}`);
-      }
-      
-      if (retries > 0) {
-        console.log(`Retrying request to ${url}, ${retries} retries left`);
-        return this.fetchWithRetry(url, options, retries - 1, timeout);
-      }
-      
-      throw error;
-    }
-  },
-  
-  // Get token prices from CoinGecko or cache
-  async getTokenPrices() {
-    try {
-      if (isCacheValid(dataCache.prices, CACHE_TTL.PRICES)) {
-        return dataCache.prices.data;
-      }
-      
-      const response = await this.fetchWithRetry(API_ENDPOINTS.SOLANA_PRICES);
-      
-      // Format data for our application
-      const formattedData = {
-        SOL: {
-          price: response.solana.usd,
-          change24h: response.solana.usd_24h_change,
-          history: []
-        },
-        BTC: {
-          price: response.bitcoin.usd,
-          change24h: response.bitcoin.usd_24h_change,
-          history: []
-        },
-        ETH: {
-          price: response.ethereum.usd,
-          change24h: response.ethereum.usd_24h_change,
-          history: []
-        },
-        USDC: {
-          price: response['usd-coin'].usd,
-          change24h: response['usd-coin'].usd_24h_change,
-          history: []
-        },
-        USDT: {
-          price: response.tether.usd,
-          change24h: response.tether.usd_24h_change,
-          history: []
-        },
-        JUP: {
-          price: response.jupiter.usd,
-          change24h: response.jupiter.usd_24h_change,
-          history: []
-        },
-        RAY: {
-          price: response.raydium.usd,
-          change24h: response.raydium.usd_24h_change,
-          history: []
+      // შევამოწმოთ არის თუ არა Phantom საფულე ხელმისაწვდომი
+      if (window.solana && window.solana.isPhantom) {
+        try {
+          this.providers.phantom = window.solana;
+          
+          // მოვუსმინოთ მდგომარეობის ცვლილებას
+          window.solana.on('connect', () => {
+            console.log('Phantom wallet connected:', window.solana.publicKey.toString());
+            this.config.address = window.solana.publicKey.toString();
+            this.config.connected = true;
+            this.config.type = 'phantom';
+            this.updateSolanaBalance();
+              
+            // დავაინფორმოთ აპლიკაცია საფულის მდგომარეობის ცვლილების შესახებ
+            const event = new CustomEvent('wallet-status-changed', { 
+              detail: { 
+                connected: true, 
+                address: this.config.address,
+                type: 'phantom'
+              } 
+            });
+            window.dispatchEvent(event);
+          });
+          
+          // მოვუსმინოთ გამოერთებას
+          window.solana.on('disconnect', () => {
+            console.log('Phantom wallet disconnected');
+            this.disconnectPhantom(false); // არ დავუძახოთ disconnect ბრძანებას კვლავ რათა თავიდან ავიცილოთ უსასრულო ციკლი
+          });
+          
+          // მოვუსმინოთ ანგარიშის ცვლილებას
+          window.solana.on('accountChanged', (publicKey) => {
+            if (publicKey) {
+              console.log('Phantom account changed:', publicKey.toString());
+              this.config.address = publicKey.toString();
+              this.updateSolanaBalance();
+              
+              const event = new CustomEvent('wallet-status-changed', { 
+                detail: { 
+                  connected: true, 
+                  address: this.config.address,
+                  type: 'phantom'
+                } 
+              });
+              window.dispatchEvent(event);
+            } else {
+              this.disconnectPhantom();
+            }
+          });
+          
+          console.log('Phantom wallet initialized successfully');
+          return true;
+        } catch (error) {
+          console.error('Error initializing Phantom wallet:', error);
+          return false;
         }
-      };
+      } else {
+        console.warn('Phantom wallet not found. Install from https://phantom.app/');
+        return false;
+      }
+    },
+    
+    // Phantom საფულის დაკავშირება
+    async connectPhantom() {
+      console.log('Connecting to Phantom wallet...');
       
-      // Update price history for each token
-      Object.keys(formattedData).forEach(token => {
-        if (dataCache.prices.data && dataCache.prices.data[token]) {
-          formattedData[token].history = [
-            ...dataCache.prices.data[token].history || [],
-            formattedData[token].price
-          ].slice(-48); // Keep last 48 data points (24 hours if updating every 30 min)
+      if (!this.providers.phantom) {
+        const initialized = await this.initPhantom();
+        if (!initialized) {
+          console.error('Could not initialize Phantom wallet');
+          return { success: false, error: 'Could not initialize Phantom wallet. Is it installed?' };
+        }
+      }
+      
+      try {
+        // მოვითხოვოთ ანგარიშის დაკავშირება
+        await this.providers.phantom.connect();
+        
+        if (this.providers.phantom.publicKey) {
+          const publicKey = this.providers.phantom.publicKey.toString();
+          
+          this.config.type = 'phantom';
+          this.config.address = publicKey;
+          this.config.connected = true;
+          this.config.provider = this.providers.phantom;
+          this.config.network = this.providers.phantom.networkVersion || 'mainnet-beta';
+          
+          // მივიღოთ SOL ბალანსი
+          await this.updateSolanaBalance();
+          
+          console.log('Connected to Phantom wallet:', this.config);
+          
+          // დავაინფორმოთ აპლიკაცია წარმატებული დაკავშირების შესახებ
+          const event = new CustomEvent('wallet-connected', { 
+            detail: { 
+              address: publicKey,
+              balance: this.config.balance,
+              network: this.config.network,
+              type: 'phantom'
+            } 
+          });
+          window.dispatchEvent(event);
+          
+          return { 
+            success: true, 
+            address: publicKey,
+            balance: this.config.balance,
+            network: this.config.network
+          };
         } else {
-          // Initialize with current price repeated
-          formattedData[token].history = Array(10).fill(formattedData[token].price);
+          return { success: false, error: 'No Solana account found' };
         }
-      });
-      
-      // Update cache
-      dataCache.prices = {
-        data: formattedData,
-        timestamp: Date.now()
-      };
-      
-      return formattedData;
-    } catch (error) {
-      console.error('Error fetching token prices:', error);
-      
-      // Return cached data if available, empty object otherwise
-      return dataCache.prices.data || {};
-    }
-  },
-  
-  // Get liquidity pool information from Raydium
-  async getLiquidityPools(forceRefresh = false) {
-    try {
-      if (!forceRefresh && isCacheValid(dataCache.pools, CACHE_TTL.POOLS)) {
-        return dataCache.pools.data;
+      } catch (error) {
+        console.error('Error connecting to Phantom wallet:', error);
+        return { success: false, error: error.message };
       }
-      
-      const response = await this.fetchWithRetry(API_ENDPOINTS.DEX_POOL_INFO);
-      
-      // Filter and format pool data
-      const relevantPools = response.official
-        .filter(pool => {
-          // Filter for pools with tokens we're interested in
-          const baseMint = pool.baseMint.toLowerCase();
-          const quoteMint = pool.quoteMint.toLowerCase();
-          
-          // SOL, BTC, ETH, USDC, USDT, JUP, RAY
-          const relevantTokens = [
-            'So11111111111111111111111111111111111111112', // SOL
-            'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
-            'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
-            '9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E', // BTC (wrapped)
-            '2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk', // ETH (wrapped)
-            'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN', // JUP
-            '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R' // RAY
-          ];
-          
-          return relevantTokens.includes(baseMint) || relevantTokens.includes(quoteMint);
-        })
-        .map(pool => ({
-          id: pool.id,
-          name: pool.name,
-          baseMint: pool.baseMint,
-          quoteMint: pool.quoteMint,
-          baseSymbol: pool.baseSymbol,
-          quoteSymbol: pool.quoteSymbol,
-          liquidity: {
-            base: parseFloat(pool.liquidity.base),
-            quote: parseFloat(pool.liquidity.quote),
-            usd: parseFloat(pool.liquidity.usd)
-          },
-          volume24h: parseFloat(pool.volume24h),
-          fee: parseFloat(pool.fee)
-        }));
-      
-      // Update cache
-      dataCache.pools = {
-        data: relevantPools,
-        timestamp: Date.now()
-      };
-      
-      return relevantPools;
-    } catch (error) {
-      console.error('Error fetching liquidity pools:', error);
-      
-      // Return cached data if available
-      return dataCache.pools.data || [];
-    }
-  },
-  
-  // Get Jupiter DEX aggregator quote for token swap
-  async getSwapQuote(inputToken, outputToken, amount, slippage = 0.5) {
-    try {
-      const cacheKey = `${inputToken}-${outputToken}-${amount}`;
-      const cachedQuote = dataCache.quotes.get(cacheKey);
-      
-      if (cachedQuote && (Date.now() - cachedQuote.timestamp) < CACHE_TTL.QUOTES) {
-        return cachedQuote.data;
-      }
-      
-      // Map token symbols to addresses
-      const tokenAddresses = {
-        SOL: 'So11111111111111111111111111111111111111112',
-        USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-        USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
-        BTC: '9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E',
-        ETH: '2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk',
-        JUP: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
-        RAY: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R'
-      };
-      
-      // Ensure tokens are valid
-      if (!tokenAddresses[inputToken] || !tokenAddresses[outputToken]) {
-        throw new Error('Invalid token symbols');
-      }
-      
-      // Convert amount to proper format (lamports for SOL, etc.)
-      const inputDecimals = inputToken === 'SOL' ? 9 : 
-                           (inputToken === 'USDC' || inputToken === 'USDT') ? 6 : 8;
-      const amountInSmallestUnit = Math.floor(amount * Math.pow(10, inputDecimals));
-      
-      const queryParams = new URLSearchParams({
-        inputMint: tokenAddresses[inputToken],
-        outputMint: tokenAddresses[outputToken],
-        amount: amountInSmallestUnit.toString(),
-        slippageBps: Math.floor(slippage * 100)
-      });
-      
-      const url = `${API_ENDPOINTS.JUPITER_QUOTE}?${queryParams.toString()}`;
-      const response = await this.fetchWithRetry(url);
-      
-      // Format the response
-      const formattedQuote = {
-        inputToken,
-        outputToken,
-        inputAmount: amount,
-        outputAmount: response.outAmount / Math.pow(10, response.outputDecimals),
-        price: response.outAmount / amountInSmallestUnit,
-        priceImpact: response.priceImpactPct,
-        routeCount: response.routesCount,
-        bestRoute: response.routePlan.map(step => ({
-          swapInfo: {
-            amountIn: step.swapInfo.inAmount,
-            amountOut: step.swapInfo.outAmount,
-            fee: step.swapInfo.fee
-          },
-          percent: step.percent,
-          dex: step.swapInfo.label || 'Unknown'
-        }))
-      };
-      
-      // Update cache
-      dataCache.quotes.set(cacheKey, {
-        data: formattedQuote,
-        timestamp: Date.now()
-      });
-      
-      // Clean up old cache entries every 100 requests
-      if (Math.random() < 0.01) {
-        this.cleanupQuoteCache();
-      }
-      
-      return formattedQuote;
-    } catch (error) {
-      console.error('Error fetching swap quote:', error);
-      
-      // Return cached data if available
-      const cacheKey = `${inputToken}-${outputToken}-${amount}`;
-      const cachedQuote = dataCache.quotes.get(cacheKey);
-      return cachedQuote ? cachedQuote.data : null;
-    }
-  },
-  
-  // Clean up old quote cache entries
-  cleanupQuoteCache() {
-    const now = Date.now();
+    },
     
-    for (const [key, value] of dataCache.quotes.entries()) {
-      if (now - value.timestamp > CACHE_TTL.QUOTES) {
-        dataCache.quotes.delete(key);
+    // Phantom საფულის გამოერთება
+    async disconnectPhantom(triggerDisconnect = true) {
+      console.log('Disconnecting from Phantom wallet...');
+      
+      if (triggerDisconnect && this.providers.phantom && this.config.connected) {
+        try {
+          await this.providers.phantom.disconnect();
+        } catch (error) {
+          console.error('Error during Phantom disconnect:', error);
+        }
+      }
+      
+      // განვაახლოთ მდგომარეობა
+      this.config.connected = false;
+      this.config.address = null;
+      this.config.balance = 0;
+      this.config.provider = null;
+      this.config.type = null;
+      
+      // დავაინფორმოთ აპლიკაცია საფულის გამოერთების შესახებ
+      const event = new CustomEvent('wallet-disconnected', { detail: { type: 'phantom' } });
+      window.dispatchEvent(event);
+      
+      return { success: true };
+    },
+    
+    // Solana ბალანსის განახლება
+    async updateSolanaBalance() {
+      if (!this.config.connected || !this.config.address) {
+        return { success: false, error: 'Wallet not connected' };
+      }
+      
+      try {
+        // ნამდვილი იმპლემენტაციისთვის გამოვიყენებთ Solana Web3.js ბიბლიოთეკას
+        // ამ დემოსთვის კი გამოვიყენებთ სიმულაციას
+        
+        // სიმულირებული ბალანსი დემოსთვის
+        const simulatedBalance = Math.random() * 20 + 0.5; // 0.5-20.5 SOL
+        this.config.balance = parseFloat(simulatedBalance.toFixed(4));
+        
+        // ნამდვილი იმპლემენტაცია იქნებოდა მსგავსი:
+        /*
+        // @solana/web3.js უნდა იყოს დამატებული პროექტში
+        const connection = new solanaWeb3.Connection(
+          solanaWeb3.clusterApiUrl(this.config.network),
+          'confirmed'
+        );
+        const publicKey = new solanaWeb3.PublicKey(this.config.address);
+        const balance = await connection.getBalance(publicKey);
+        
+        // ლამპორტებიდან SOL-ში გადაყვანა (1 SOL = 1e9 ლამპორტი)
+        this.config.balance = balance / 1e9;
+        */
+        
+        return { success: true, balance: this.config.balance };
+      } catch (error) {
+        console.error('Error getting Solana balance:', error);
+        return { success: false, error: error.message };
+      }
+    },
+    
+    // Solana ქსელის შემოწმება
+    getSolanaNetwork() {
+      const networks = {
+        'mainnet-beta': 'Solana Mainnet',
+        'testnet': 'Solana Testnet',
+        'devnet': 'Solana Devnet',
+        'localnet': 'Solana Localnet'
+      };
+      
+      return networks[this.config.network] || 'Unknown Solana Network';
+    },
+    
+    // საფულის მდგომარეობის მიღება
+    getWalletState() {
+      return this.config;
+    },
+    
+    // შევამოწმოთ არის თუ არა საფულე დაკავშირებული
+    isConnected() {
+      return this.config.connected;
+    },
+    
+    // მოკლე დახმარება Phantom საფულის დასაინსტალირებლად
+    openPhantomInstallHelp() {
+      window.open('https://phantom.app/', '_blank');
+    },
+    
+    // ტრანზაქციის ხელმოწერა და გაგზავნა
+    async signAndSendTransaction(transaction) {
+      if (!this.config.connected || !this.config.provider) {
+        return { success: false, error: 'Wallet not connected' };
+      }
+      
+      try {
+        // დემო რეჟიმში - ტრანზაქციის სიმულაცია
+        const simulatedSignature = 'sim_' + Math.random().toString(36).substring(2, 15);
+        console.log('Simulating transaction signature:', simulatedSignature);
+        
+        // რეალური იმპლემენტაცია იქნებოდა:
+        /*
+        const { signature } = await this.config.provider.signAndSendTransaction(transaction);
+        await connection.confirmTransaction(signature);
+        */
+        
+        return {
+          success: true,
+          signature: simulatedSignature
+        };
+      } catch (error) {
+        console.error('Error signing transaction:', error);
+        return { success: false, error: error.message };
       }
     }
+  },
+  
+  // API ინტეგრაციები
+  api: {
+    // Fetch with timeout and retry logic
+    async fetchWithRetry(url, options = {}, retries = 3, timeout = 5000) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      options.signal = controller.signal;
+      
+      try {
+        const response = await fetch(url, options);
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status} - ${response.statusText}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        
+        if (error.name === 'AbortError') {
+          console.warn(`Request timeout for ${url}`);
+        }
+        
+        if (retries > 0) {
+          console.log(`Retrying request to ${url}, ${retries} retries left`);
+          return this.fetchWithRetry(url, options, retries - 1, timeout);
+        }
+        
+        throw error;
+      }
+    },
+    
+    // Get token prices from CoinGecko or cache
+    async getTokenPrices() {
+      try {
+        if (isCacheValid(dataCache.prices, CACHE_TTL.PRICES)) {
+          return dataCache.prices.data;
+        }
+        
+        const response = await this.fetchWithRetry(API_ENDPOINTS.SOLANA_PRICES);
+        
+        // Format data for our application
+        const formattedData = {
+          SOL: {
+            price: response.solana.usd,
+            change24h: response.solana.usd_24h_change,
+            history: []
+          },
+          BTC: {
+            price: response.bitcoin.usd,
+            change24h: response.bitcoin.usd_24h_change,
+            history: []
+          },
+          ETH: {
+            price: response.ethereum.usd,
+            change24h: response.ethereum.usd_24h_change,
+            history: []
+          },
+          USDC: {
+            price: response['usd-coin'].usd,
+            change24h: response['usd-coin'].usd_24h_change,
+            history: []
+          },
+          USDT: {
+            price: response.tether.usd,
+            change24h: response.tether.usd_24h_change,
+            history: []
+          },
+          JUP: {
+            price: response.jupiter.usd,
+            change24h: response.jupiter.usd_24h_change,
+            history: []
+          },
+          RAY: {
+            price: response.raydium.usd,
+            change24h: response.raydium.usd_24h_change,
+            history: []
+          }
+        };
+        
+        // Update price history for each token
+        Object.keys(formattedData).forEach(token => {
+          if (dataCache.prices.data && dataCache.prices.data[token]) {
+            formattedData[token].history = [
+              ...dataCache.prices.data[token].history || [],
+              formattedData[token].price
+            ].slice(-48); // Keep last 48 data points (24 hours if updating every 30 min)
+          } else {
+            // Initialize with current price repeated
+            formattedData[token].history = Array(10).fill(formattedData[token].price);
+          }
+        });
+        
+        // Update cache
+        dataCache.prices = {
+          data: formattedData,
+          timestamp: Date.now()
+        };
+        
+        return formattedData;
+      } catch (error) {
+        console.error('Error fetching token prices:', error);
+        
+        // Return cached data if available, empty object otherwise
+        return dataCache.prices.data || {};
+      }
+    },
+    
+    // Get liquidity pool information from Raydium
+    async getLiquidityPools(forceRefresh = false) {
+      try {
+        if (!forceRefresh && isCacheValid(dataCache.pools, CACHE_TTL.POOLS)) {
+          return dataCache.pools.data;
+        }
+        
+        const response = await this.fetchWithRetry(API_ENDPOINTS.DEX_POOL_INFO);
+        
+        // Filter and format pool data
+        const relevantPools = response.official
+          .filter(pool => {
+            // Filter for pools with tokens we're interested in
+            const baseMint = pool.baseMint.toLowerCase();
+            const quoteMint = pool.quoteMint.toLowerCase();
+            
+            // SOL, BTC, ETH, USDC, USDT, JUP, RAY
+            const relevantTokens = [
+              'So11111111111111111111111111111111111111112', // SOL
+              'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+              'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
+              '9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E', // BTC (wrapped)
+              '2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk', // ETH (wrapped)
+              'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN', // JUP
+              '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R' // RAY
+            ];
+            
+            return relevantTokens.includes(baseMint) || relevantTokens.includes(quoteMint);
+          })
+          .map(pool => ({
+            id: pool.id,
+            name: pool.name,
+            baseMint: pool.baseMint,
+            quoteMint: pool.quoteMint,
+            baseSymbol: pool.baseSymbol,
+            quoteSymbol: pool.quoteSymbol,
+            liquidity: {
+              base: parseFloat(pool.liquidity.base),
+              quote: parseFloat(pool.liquidity.quote),
+              usd: parseFloat(pool.liquidity.usd)
+            },
+            volume24h: parseFloat(pool.volume24h),
+            fee: parseFloat(pool.fee)
+          }));
+        
+        // Update cache
+        dataCache.pools = {
+          data: relevantPools,
+          timestamp: Date.now()
+        };
+        
+        return relevantPools;
+      } catch (error) {
+        console.error('Error fetching liquidity pools:', error);
+        
+        // Return cached data if available
+        return dataCache.pools.data || [];
+      }
+    },
+    
+    // Get Jupiter DEX aggregator quote for token swap
+    async getSwapQuote(inputToken, outputToken, amount, slippage = 0.5) {
+      try {
+        const cacheKey = `${inputToken}-${outputToken}-${amount}`;
+        const cachedQuote = dataCache.quotes.get(cacheKey);
+        
+        if (cachedQuote && (Date.now() - cachedQuote.timestamp) < CACHE_TTL.QUOTES) {
+          return cachedQuote.data;
+        }
+        
+        // Map token symbols to addresses
+        const tokenAddresses = {
+          SOL: 'So11111111111111111111111111111111111111112',
+          USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+          BTC: '9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E',
+          ETH: '2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk',
+          JUP: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+          RAY: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R'
+        };
+        
+        // Ensure tokens are valid
+        if (!tokenAddresses[inputToken] || !tokenAddresses[outputToken]) {
+          throw new Error('Invalid token symbols');
+        }
+        
+        // Convert amount to proper format (lamports for SOL, etc.)
+        const inputDecimals = inputToken === 'SOL' ? 9 : 
+                             (inputToken === 'USDC' || inputToken === 'USDT') ? 6 : 8;
+        const amountInSmallestUnit = Math.floor(amount * Math.pow(10, inputDecimals));
+        
+        const queryParams = new URLSearchParams({
+          inputMint: tokenAddresses[inputToken],
+          outputMint: tokenAddresses[outputToken],
+          amount: amountInSmallestUnit.toString(),
+          slippageBps: Math.floor(slippage * 100)
+        });
+        
+        const url = `${API_ENDPOINTS.JUPITER_QUOTE}?${queryParams.toString()}`;
+        const response = await this.fetchWithRetry(url);
+        
+        // Format the response
+        const formattedQuote = {
+          inputToken,
+          outputToken,
+          inputAmount: amount,
+          outputAmount: response.outAmount / Math.pow(10, response.outputDecimals),
+          price: response.outAmount / amountInSmallestUnit,
+          priceImpact: response.priceImpactPct,
+          routeCount: response.routesCount,
+          bestRoute: response.routePlan.map(step => ({
+            swapInfo: {
+              amountIn: step.swapInfo.inAmount,
+              amountOut: step.swapInfo.outAmount,
+              fee: step.swapInfo.fee
+            },
+            percent: step.percent,
+            dex: step.swapInfo.label || 'Unknown'
+          }))
+        };
+        
+        // Update cache
+        dataCache.quotes.set(cacheKey, {
+          data: formattedQuote,
+          timestamp: Date.now()
+        });
+        
+        // Clean up old cache entries every 100 requests
+        if (Math.random() < 0.01) {
+          this.cleanupQuoteCache();
+        }
+        
+        return formattedQuote;
+      } catch (error) {
+        console.error('Error fetching swap quote:', error);
+        
+        // Return cached data if available
+        const cacheKey = `${inputToken}-${outputToken}-${amount}`;
+        const cachedQuote = dataCache.quotes.get(cacheKey);
+        return cachedQuote ? cachedQuote.data : null;
+      }
+    },
+    
+    // Clean up old quote cache entries
+    cleanupQuoteCache() {
+      const now = Date.now();
+      
+      for (const [key, value] of dataCache.quotes.entries()) {
+        if (now - value.timestamp > CACHE_TTL.QUOTES) {
+          dataCache.quotes.delete(key);
+        }
+      }
+    }
+  },
+  
+  // WebSocket Service
+  sockets: {
+    // Initialize price WebSocket connection
+    initPriceSocket() {
+      if (priceSocket) {
+        this.closePriceSocket();
+      }
+      
+      try {
+        // Use a simulated WebSocket for demo purposes
+        // In production, use a real crypto price WebSocket API
+        if (!window.WebSocket) {
+          console.error('WebSocket not supported by your browser');
+          return;
+        }
+        
+        console.log('Initializing price WebSocket...');
+        
+        // Simulate WebSocket with setInterval
+        this.simulatedPriceSocket = setInterval(() => {
+          if (!dataCache.prices.data) return;
+          
+          const tokens = Object.keys(dataCache.prices.data);
+          
+          // Generate a random price update for demonstration
+          const randomToken = tokens[Math.floor(Math.random() * tokens.length)];
+          const currentPrice = dataCache.prices.data[randomToken].price;
+          const randomChange = (Math.random() * 0.01 - 0.005) * currentPrice; // -0.5% to +0.5%
+          
+          const update = {
+            token: randomToken,
+            price: currentPrice + randomChange,
+            timestamp: Date.now()
+          };
+          
+          // Update the cache
+          if (dataCache.prices.data[randomToken]) {
+            dataCache.prices.data[randomToken].price = update.price;
+            dataCache.prices.data[randomToken].history.push(update.price);
+            
+            if (dataCache.prices.data[randomToken].history.length > 48) {
+              dataCache.prices.data[randomToken].history.shift();
+            }
+          }
+          
+          // Dispatch custom event for price update
+          const event = new CustomEvent('price-update', { detail: update });
+          window.dispatchEvent(event);
+        }, 3000);
+        
+        return true;
+      } catch (error) {
+        console.error('Error initializing price WebSocket:', error);
+        return false;
+      }
+    },
+    
+    // Close price WebSocket connection
+    closePriceSocket() {
+      if (this.simulatedPriceSocket) {
+        clearInterval(this.simulatedPriceSocket);
+        this.simulatedPriceSocket = null;
+      }
+      
+      if (priceSocket && priceSocket.readyState === WebSocket.OPEN) {
+        priceSocket.close();
+        priceSocket = null;
+      }
+    },
+    
+    // Initialize transaction WebSocket connection
+    initTransactionSocket() {
+      if (transactionSocket) {
+        this.closeTransactionSocket();
+      }
+      
+      try {
+        console.log('Initializing transaction WebSocket...');
+        
+        // Simulate transaction WebSocket
+        this.simulatedTransactionSocket = setInterval(() => {
+          // Generate random transaction
+          const tokens = ['SOL', 'BTC', 'ETH', 'USDC', 'USDT', 'JUP', 'RAY'];
+          const dexes = ['Jupiter', 'Raydium', 'Orca', 'OpenBook'];
+          
+          const fromToken = tokens[Math.floor(Math.random() * tokens.length)];
+          let toToken;
+          do {
+            toToken = tokens[Math.floor(Math.random() * tokens.length)];
+          } while (toToken === fromToken);
+          
+          const amount = (Math.random() * 20 + 0.5).toFixed(2);
+          const dex = dexes[Math.floor(Math.random() * dexes.length)];
+          const success = Math.random() > 0.1; // 90% success rate
+          
+          const transaction = {
+            id: 'tx_' + Math.random().toString(36).substring(2, 10),
+            timestamp: Date.now(),
+            fromToken,
+            toToken,
+            amount: parseFloat(amount),
+            dex,
+            status: success ? 'completed' : 'failed',
+            profit: success ? (Math.random() * amount * 0.03).toFixed(3) : '0',
+            gasUsed: (Math.random() * 0.0001).toFixed(6)
+          };
+          
+          // Dispatch custom event for transaction update
+          const event = new CustomEvent('transaction-update', { detail: transaction });
+          window.dispatchEvent(event);
+        }, 45000); // New transaction every 45 seconds
+        
+        return true;
+      } catch (error) {
+        console.error('Error initializing transaction WebSocket:', error);
+        return false;
+      }
+    },
+    
+    // Close transaction WebSocket connection
+    closeTransactionSocket() {
+      if (this.simulatedTransactionSocket) {
+        clearInterval(this.simulatedTransactionSocket);
+        this.simulatedTransactionSocket = null;
+        console.log('Initializing network WebSocket for arbitrage opportunities...');
+        
+        // Simulate network WebSocket for arbitrage opportunities
+        this.simulatedNetworkSocket = setInterval(() => {
+          // Generate random arbitrage opportunity
+          const tokens = ['SOL', 'BTC', 'ETH', 'USDC', 'USDT', 'JUP', 'RAY'];
+          const dexes = ['Jupiter', 'Raydium', 'Orca', 'OpenBook'];
+          
+          const baseToken = tokens[Math.floor(Math.random() * tokens.length)];
+          let quoteToken;
+          do {
+            quoteToken = tokens[Math.floor(Math.random() * tokens.length)];
+          } while (quoteToken === baseToken);
+          
+          const sourceDex = dexes[Math.floor(Math.random() * dexes.length)];
+          let targetDex;
+          do {
+            targetDex = dexes[Math.floor(Math.random() * dexes.length)];
+          } while (targetDex === sourceDex);
+          
+          // Generate profit percentage (0.1% to 2.5%)
+          const profitPercent = (Math.random() * 2.4 + 0.1).toFixed(2);
+          
+          const arbitrage = {
+            id: 'arb_' + Math.random().toString(36).substring(2, 10),
+            timestamp: Date.now(),
+            baseToken,
+            quoteToken,
+            sourceDex,
+            targetDex,
+            profitPercent: parseFloat(profitPercent),
+            estimatedProfit: (Math.random() * 0.5).toFixed(3),
+            confidence: Math.random() * 100 // 0-100%
+          };
+          
+          // Dispatch custom event for arbitrage opportunity
+          const event = new CustomEvent('arbitrage-opportunity', { detail: arbitrage });
+          window.dispatchEvent(event);
+          
+          // 20% chance to generate a triangular arbitrage opportunity
+          if (Math.random() < 0.2) {
+            let intermediateToken;
+            do {
+              intermediateToken = tokens[Math.floor(Math.random() * tokens.length)];
+            } while (intermediateToken === baseToken || intermediateToken === quoteToken);
+            
+            const triangularArbitrage = {
+              id: 'tri_' + Math.random().toString(36).substring(2, 10),
+              timestamp: Date.now(),
+              type: 'triangular',
+              path: [baseToken, intermediateToken, quoteToken, baseToken],
+              exchanges: [
+                dexes[Math.floor(Math.random() * dexes.length)],
+                dexes[Math.floor(Math.random() * dexes.length)],
+                dexes[Math.floor(Math.random() * dexes.length)]
+              ],
+              profitPercent: (Math.random() * 3.4 + 0.3).toFixed(2),
+              estimatedProfit: (Math.random() * 0.7).toFixed(3),
+              complexity: 'medium',
+              executionTime: Math.floor(Math.random() * 500 + 500) // 500-1000ms
+            };
+            
+            // Dispatch custom event for triangular arbitrage opportunity
+            const triangularEvent = new CustomEvent('triangular-arbitrage', { detail: triangularArbitrage });
+            window.dispatchEvent(triangularEvent);
+          }
+        }, 25000); // New arbitrage opportunity every 25 seconds
+        
+        return true;
+      } catch (error) {
+        console.error('Error initializing network WebSocket:', error);
+        return false;
+      }
+    },
+    
+    // Close network WebSocket connection
+    closeNetworkSocket() {
+      if (this.simulatedNetworkSocket) {
+        clearInterval(this.simulatedNetworkSocket);
+        this.simulatedNetworkSocket = null;
+      }
+      
+      if (networkSocket && networkSocket.readyState === WebSocket.OPEN) {
+        networkSocket.close();
+        networkSocket = null;
+      }
+    }
+  },
+  
+  // სერვისების ინიციალიზაცია
+  initialize() {
+    console.log('Initializing services module...');
+    
+    // API სერვისების ინიციალიზაცია
+    this.api.initialize();
+    
+    // WebSocket სერვისების ინიციალიზაცია
+    this.sockets.initialize();
+    
+    // Solana საფულის სერვისების ინიციალიზაცია
+    if (window.solana && window.solana.isPhantom) {
+      this.wallet.initPhantom();
+    }
+    
+    return true;
   }
 };
-
-// WebSocket Service
-const webSocketService = {
-  // Initialize price WebSocket connection
-  initPriceSocket() {
-    if (priceSocket) {
-      this.closePriceSocket();
-    }
-    
-    try {
-      // Use a simulated WebSocket for demo purposes
-      // In production, use a real crypto price WebSocket API
-      if (!window.WebSocket) {
-        console.error('WebSocket not supported by your browser');
-        return;
-      }
-      
-      console.log('Initializing price WebSocket...');
-      
-      // Simulate WebSocket with setInterval
-      this.simulatedPriceSocket = setInterval(() => {
-        if (!dataCache.prices.data) return;
-        
-        const tokens = Object.keys(dataCache.prices.data);
-        
-        // Generate a random price update for demonstration
         const randomToken = tokens[Math.floor(Math.random() * tokens.length)];
         const currentPrice = dataCache.prices.data[randomToken].price;
         const randomChange = (Math.random() * 0.01 - 0.005) * currentPrice; // -0.5% to +0.5%

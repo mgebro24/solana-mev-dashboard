@@ -37,6 +37,96 @@
   
   <!-- ინტერაქტიული გრაფიკებისთვის -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" defer></script>
+  
+  <!-- Solana Wallet Integration -->
+  <script src="wallet-connect.js" defer></script>
+  <script src="solana-services.js" defer></script>
+  
+  <!-- Added CSS for wallet and trading UI -->
+  <style>
+    .wallet-connected.hidden, .wallet-not-connected.hidden {
+      display: none !important;
+    }
+    
+    /* Notification styling */
+    #notification-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .notification {
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(8px);
+      transform: translateX(0);
+      opacity: 1;
+      transition: all 0.3s ease;
+    }
+    
+    .notification.fade-out {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    
+    /* Trade button styles */
+    .trade-btn {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      background: rgba(139, 92, 246, 0.3);
+      color: rgb(216, 180, 254);
+      border: 1px solid rgba(139, 92, 246, 0.5);
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    
+    .trade-btn:hover:not(:disabled) {
+      background: rgba(139, 92, 246, 0.5);
+      transform: translateY(-1px);
+    }
+    
+    .trade-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .real-time-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      color: #10b981;
+    }
+    
+    .real-time-indicator .pulse {
+      height: 8px;
+      width: 8px;
+      background-color: #10b981;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% {
+        opacity: 0.5;
+        transform: scale(0.8);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      100% {
+        opacity: 0.5;
+        transform: scale(0.8);
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Animated background grid effect -->
@@ -47,7 +137,7 @@
   <div class="container mx-auto my-8 px-4 relative z-10">
     <!-- Dashboard Header -->
     <header class="mb-8">
-      <div class="flex justify-between items-center">
+      <div class="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 class="text-2xl font-bold mb-1">Solana MEV Dashboard</h1>
           <div class="text-sm text-gray-400">
@@ -55,10 +145,31 @@
           </div>
         </div>
         
-        <div>
-          <button class="btn-neo">
-            <span>საფულის დაკავშირება</span>
-          </button>
+        <div class="flex items-center gap-4">
+          <!-- Wallet Connection Status -->
+          <div id="wallet-status" class="hidden wallet-connected bg-green-900/30 text-green-400 px-3 py-1 rounded-md">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+              </svg>
+              <span id="wallet-address">დაკავშირებული</span>
+            </div>
+          </div>
+          
+          <!-- Wallet Balance -->
+          <div id="wallet-balance-container" class="hidden wallet-connected px-3 py-1 bg-blue-900/30 text-blue-400 rounded-md">
+            <span id="wallet-balance">0.0</span> SOL
+          </div>
+          
+          <!-- Connect Button -->
+          <div id="connect-wallet-container">
+            <button id="connect-wallet" class="btn-neo wallet-not-connected">
+              <span><img src="https://phantom.app/favicon.ico" class="w-4 h-4 inline-block mr-2" /> Phantom დაკავშირება</span>
+            </button>
+            <button id="disconnect-wallet" class="btn-neo hidden wallet-connected bg-purple-700 hover:bg-purple-800">
+              <span>გამოერთება</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -68,22 +179,35 @@
       <div class="dashboard-sidebar">
         <!-- Balance Card -->
         <div class="glass p-4 rounded-lg mb-6">
-          <h2 class="text-lg font-medium mb-2">ბალანსი</h2>
+          <h2 class="text-lg font-medium mb-4">
+            არბიტრაჟის შესაძლებლობები
+            <span class="real-time-indicator ml-2">
+              <span class="pulse"></span> 2 წამში ერთხელ
+            </span>
+          </h2>
           
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-2xl font-bold">120.85 SOL</div>
-            <div class="text-sm text-gray-400">$14,589.72</div>
-          </div>
-          
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <div class="text-gray-400">დღიური მოგება</div>
-              <div class="price-up">+3.21 SOL</div>
+          <div id="opportunities-container" class="space-y-3">
+            <!-- Loading placeholder -->
+            <div class="glass p-3 rounded-lg text-center py-6 animate-pulse" id="opportunities-loading">
+              <div class="text-sm text-gray-400">იტვირთება არბიტრაჟის შესაძლებლობები...</div>
             </div>
-            <div>
-              <div class="text-gray-400">კვირის მოგება</div>
-              <div class="price-up">+29.82 SOL</div>
-            </div>
+            
+            <!-- Opportunity template (will be cloned by JS) -->
+            <template id="opportunity-template">
+              <div class="glass p-3 rounded-lg opportunity-item">
+                <div class="flex justify-between items-start mb-2">
+                  <div>
+                    <span class="text-sm font-medium opportunity-route">SOL → USDC → BTC → SOL</span>
+                    <div class="text-xs text-gray-400 opportunity-dexes">Raydium, Jupiter, Orca</div>
+                  </div>
+                  <span class="text-green-400 text-sm opportunity-profit">+1.8%</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <div class="text-xs text-gray-300">Est. profit: <span class="text-green-400 opportunity-value">0.14 SOL</span></div>
+                  <button class="trade-btn opportunity-execute" data-wallet-required>Execute</button>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
         
