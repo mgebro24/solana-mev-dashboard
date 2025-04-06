@@ -168,7 +168,7 @@ const solanaServices = {
       this.fetchAllTokenPrices();
     }, intervalMs);
     
-    console.log(`Price updates started (every ${intervalMs}ms)`);
+    console.log(`Started price updates with interval: ${intervalMs}ms`);
   },
   
   // Start real-time arbitrage opportunity updates
@@ -186,7 +186,7 @@ const solanaServices = {
       this.calculateArbitrageOpportunities();
     }, intervalMs);
     
-    console.log(`Arbitrage updates started (every ${intervalMs}ms)`);
+    console.log(`Started arbitrage updates with interval: ${intervalMs}ms`);
   },
   
   // Stop all update intervals
@@ -207,60 +207,40 @@ const solanaServices = {
   // Fetch prices for all tokens
   async fetchAllTokenPrices() {
     try {
-      // Check if cache is still valid
-      if (isCacheValid(dataCache.prices, CACHE_TTL.PRICES)) {
-        return dataCache.prices.data;
+      // Use our real Jupiter API for price data instead of simulated data
+      const tokenPrices = await window.jupiterAPI.getAllTokenPrices();
+      
+      if (!tokenPrices || Object.keys(tokenPrices).length === 0) {
+        console.error('No token prices received from Jupiter API');
+        return null;
       }
       
-      // Build list of token IDs to fetch
-      const tokenIds = TOP_SOLANA_TOKENS.map(token => token.id).join(',');
-      
-      // Build the API URL with parameters
-      const url = `${API_ENDPOINTS.COIN_PRICES}?ids=${tokenIds}&vs_currencies=usd&include_24hr_change=true`;
-      
-      // Fetch data
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`Price API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Process the data into a more usable format
-      const processedData = {};
-      
-      TOP_SOLANA_TOKENS.forEach(token => {
-        if (data[token.id]) {
-          processedData[token.symbol] = {
-            symbol: token.symbol,
-            name: token.name,
-            price: data[token.id].usd || 0,
-            change24h: data[token.id].usd_24h_change || 0
-          };
-        }
-      });
-      
-      // Update cache
+      // Update the cache
       dataCache.prices = {
-        data: processedData,
+        data: tokenPrices,
         timestamp: Date.now()
       };
       
-      // Dispatch price update event
-      this.dispatchPriceUpdateEvent(processedData);
+      // Dispatch an event to notify other components
+      this.dispatchPriceUpdateEvent(tokenPrices);
       
-      return processedData;
+      // Update the last update time display
+      const timeDisplay = document.getElementById('last-update-time');
+      if (timeDisplay) {
+        timeDisplay.textContent = new Date().toLocaleTimeString();
+      }
+      
+      return tokenPrices;
     } catch (error) {
       console.error('Error fetching token prices:', error);
       
-      // If we have cached data, return that instead
-      if (dataCache.prices.data) {
+      // If there's data in the cache, return it
+      if (isCacheValid(dataCache.prices, CACHE_TTL.PRICES)) {
+        console.log('Using cached price data due to fetch error');
         return dataCache.prices.data;
       }
       
-      // Otherwise return empty object
-      return {};
+      return null;
     }
   },
   
@@ -279,45 +259,45 @@ const solanaServices = {
   // Calculate arbitrage opportunities
   async calculateArbitrageOpportunities() {
     try {
-      // Need price data to calculate arbitrage
-      const prices = isCacheValid(dataCache.prices, CACHE_TTL.PRICES) 
-        ? dataCache.prices.data 
-        : await this.fetchAllTokenPrices();
+      // Fetch the latest prices if needed
+      let prices = dataCache.prices.data;
+      if (!isCacheValid(dataCache.prices, CACHE_TTL.PRICES)) {
+        prices = await this.fetchAllTokenPrices();
+      }
       
-      // Simple arbitrage: direct token swaps between DEXes
-      const simpleArbitrageOpps = this.findSimpleArbitrageOpportunities(prices);
+      if (!prices) {
+        console.error('No price data available for arbitrage calculations');
+        return;
+      }
       
-      // Triangular arbitrage: token A → token B → token C → token A
-      const triangularArbitrageOpps = this.findTriangularArbitrageOpportunities(prices);
-      
-      // Complex arbitrage: multi-hop paths with various DEXes
-      const complexArbitrageOpps = this.findComplexArbitrageOpportunities(prices);
+      // Find different types of arbitrage opportunities
+      const simpleOpps = this.findSimpleArbitrageOpportunities(prices);
+      const triangularOpps = await this.findTriangularArbitrageOpportunities(prices);
+      const complexOpps = this.findComplexArbitrageOpportunities(prices);
       
       // Combine all opportunities
-      const allOpportunities = {
-        simple: simpleArbitrageOpps,
-        triangular: triangularArbitrageOpps,
-        complex: complexArbitrageOpps,
-        timestamp: Date.now()
-      };
+      const allOpportunities = [
+        ...simpleOpps,
+        ...triangularOpps,
+        ...complexOpps
+      ];
       
-      // Dispatch event with all arbitrage opportunities
-      const event = new CustomEvent('arbitrage-opportunities', {
-        detail: allOpportunities
+      // Sort by profit potential (highest first)
+      allOpportunities.sort((a, b) => parseFloat(b.profitPercent) - parseFloat(a.profitPercent));
+      
+      // Dispatch event with opportunities
+      const event = new CustomEvent('arbitrage-opportunities-updated', {
+        detail: {
+          opportunities: allOpportunities,
+          timestamp: Date.now()
+        }
       });
-      
       window.dispatchEvent(event);
       
       return allOpportunities;
     } catch (error) {
       console.error('Error calculating arbitrage opportunities:', error);
-      return {
-        simple: [],
-        triangular: [],
-        complex: [],
-        timestamp: Date.now(),
-        error: error.message
-      };
+      return [];
     }
   },
   
@@ -380,65 +360,15 @@ const solanaServices = {
   
   // Find triangular arbitrage opportunities (A → B → C → A)
   findTriangularArbitrageOpportunities(prices) {
-    const opportunities = [];
-    const dexes = ['Raydium', 'Jupiter', 'Orca', 'Serum'];
+    if (!prices) return [];
     
-    // Get tokens with price data
-    const tokens = Object.keys(prices);
-    
-    // Generate some simulated triangular arbitrage opportunities
-    for (let i = 0; i < 2; i++) {
-      if (tokens.length < 3) continue;
-      
-      // Select three random tokens for the triangle
-      const tokenA = tokens[Math.floor(Math.random() * tokens.length)];
-      let tokenB, tokenC;
-      
-      do {
-        tokenB = tokens[Math.floor(Math.random() * tokens.length)];
-      } while (tokenB === tokenA);
-      
-      do {
-        tokenC = tokens[Math.floor(Math.random() * tokens.length)];
-      } while (tokenC === tokenA || tokenC === tokenB);
-      
-      // Calculate simulated conversion rates
-      const rateAB = (prices[tokenA].price / prices[tokenB].price) * (1 - Math.random() * 0.01); // A → B
-      const rateBC = (prices[tokenB].price / prices[tokenC].price) * (1 - Math.random() * 0.01); // B → C
-      const rateCA = (prices[tokenC].price / prices[tokenA].price) * (1 - Math.random() * 0.01); // C → A
-      
-      // Calculate the triangular arbitrage factor
-      // If this is > 1, there's a profit opportunity
-      const triangularFactor = 1 / (rateAB * rateBC * rateCA);
-      
-      // Calculate profit percentage
-      const profitPercent = (triangularFactor - 1) * 100;
-      
-      // Only include opportunities with at least 0.8% profit (after fees)
-      if (profitPercent >= 0.8) {
-        // Randomly select 3 DEXes for the 3 conversions
-        const usedDexes = [
-          dexes[Math.floor(Math.random() * dexes.length)],
-          dexes[Math.floor(Math.random() * dexes.length)],
-          dexes[Math.floor(Math.random() * dexes.length)]
-        ];
-        
-        opportunities.push({
-          type: 'triangular',
-          route: [
-            { from: tokenA, to: tokenB, rate: rateAB, dex: usedDexes[0] },
-            { from: tokenB, to: tokenC, rate: rateBC, dex: usedDexes[1] },
-            { from: tokenC, to: tokenA, rate: rateCA, dex: usedDexes[2] }
-          ],
-          profitPercent: profitPercent.toFixed(3),
-          // Simulated profit for 1 unit of tokenA
-          estimatedProfit: ((triangularFactor - 1) * prices[tokenA].price).toFixed(4),
-          timestamp: Date.now()
-        });
-      }
+    try {
+      // Use the Jupiter API for real triangular arbitrage opportunities
+      return window.jupiterAPI.findTriangularArbitrageOpportunities();
+    } catch (error) {
+      console.error('Error finding triangular arbitrage opportunities:', error);
+      return [];
     }
-    
-    return opportunities;
   },
   
   // Find complex arbitrage opportunities (multi-hop, multi-DEX)
@@ -496,6 +426,13 @@ const solanaServices = {
     
     // Only include if there's a reasonable profit
     if (profitPercent >= 1.2) {
+      // Randomly select 3 DEXes for the 3 conversions
+      const usedDexes = [
+        dexes[Math.floor(Math.random() * dexes.length)],
+        dexes[Math.floor(Math.random() * dexes.length)],
+        dexes[Math.floor(Math.random() * dexes.length)]
+      ];
+      
       opportunities.push({
         type: 'complex',
         path: path,

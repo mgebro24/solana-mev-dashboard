@@ -46,20 +46,23 @@ function initArbitrageUI() {
  */
 function registerEventListeners() {
   // Listen for arbitrage opportunities updates
-  window.addEventListener('arbitrage-opportunities', (event) => {
-    const opportunities = event.detail;
+  window.addEventListener('arbitrage-opportunities-updated', (event) => {
+    const data = event.detail;
+    const opportunities = data.opportunities || [];
+    
+    // ორგანიზება ტიპის მიხედვით 
+    const sortedOpportunities = {
+      simple: opportunities.filter(opp => opp.type === 'simple'),
+      triangular: opportunities.filter(opp => opp.type === 'triangular'),
+      complex: opportunities.filter(opp => opp.type === 'complex')
+    };
     
     // Update our UI state
-    uiState.opportunities.simple = opportunities.simple || [];
-    uiState.opportunities.triangular = opportunities.triangular || [];
-    uiState.opportunities.complex = opportunities.complex || [];
-    uiState.lastUpdate = opportunities.timestamp || Date.now();
+    uiState.opportunities = sortedOpportunities;
+    uiState.lastUpdate = data.timestamp || Date.now();
     
     // Calculate total opportunities count
-    uiState.totalOpportunitiesCount = 
-      uiState.opportunities.simple.length + 
-      uiState.opportunities.triangular.length + 
-      uiState.opportunities.complex.length;
+    uiState.totalOpportunitiesCount = opportunities.length;
     
     // Update UI
     updateArbitrageCount(uiState.totalOpportunitiesCount);
@@ -131,43 +134,38 @@ function renderArbitrageOpportunities() {
   }
   
   // Clear existing opportunities
-  const existingOpportunities = domElements.opportunitiesContainer.querySelectorAll('.opportunity-item');
-  existingOpportunities.forEach(item => {
-    if (!item.id.startsWith('opportunities-loading')) {
-      item.remove();
-    }
-  });
+  domElements.opportunitiesContainer.innerHTML = '';
   
-  // Create document fragment for better performance
+  // Create a document fragment to reduce reflows
   const fragment = document.createDocumentFragment();
   
-  // Add triangular opportunities (highest priority)
-  uiState.opportunities.triangular.forEach(opportunity => {
-    const item = createOpportunityElement(opportunity, 'triangular');
-    fragment.appendChild(item);
+  // First add triangular opportunities (usually most profitable)
+  uiState.opportunities.triangular.slice(0, 5).forEach(opp => {
+    const element = createOpportunityElement(opp, 'triangular');
+    fragment.appendChild(element);
   });
   
-  // Add complex opportunities
-  uiState.opportunities.complex.forEach(opportunity => {
-    const item = createOpportunityElement(opportunity, 'complex');
-    fragment.appendChild(item);
+  // Then add simple opportunities
+  uiState.opportunities.simple.slice(0, 3).forEach(opp => {
+    const element = createOpportunityElement(opp, 'simple');
+    fragment.appendChild(element);
   });
   
-  // Add simple opportunities
-  uiState.opportunities.simple.forEach(opportunity => {
-    const item = createOpportunityElement(opportunity, 'simple');
-    fragment.appendChild(item);
+  // Finally add complex opportunities
+  uiState.opportunities.complex.slice(0, 2).forEach(opp => {
+    const element = createOpportunityElement(opp, 'complex');
+    fragment.appendChild(element);
   });
   
-  // If no opportunities, show message
-  if (uiState.totalOpportunitiesCount === 0) {
-    const noOppsMessage = document.createElement('div');
-    noOppsMessage.className = 'glass p-3 rounded-lg text-center py-6';
-    noOppsMessage.innerHTML = `<div class="text-sm text-gray-400">არ არის ხელმისაწვდომი არბიტრაჟის შესაძლებლობები</div>`;
-    fragment.appendChild(noOppsMessage);
+  // Display message if no opportunities
+  if (fragment.children.length === 0) {
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'text-center py-6 text-gray-400';
+    emptyMessage.innerHTML = 'ამჟამად არბიტრაჟის შესაძლებლობები არ მოიძებნა.<br>ცდილობთ მოძებნას...';
+    fragment.appendChild(emptyMessage);
   }
   
-  // Add all opportunities to the container
+  // Add to container
   domElements.opportunitiesContainer.appendChild(fragment);
   
   // Add event listeners to execute buttons

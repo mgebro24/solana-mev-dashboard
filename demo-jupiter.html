@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jupiter API Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #1a1a2e; 
+            color: #e6e6e6; 
+            padding: 20px;
+        }
+        .container { max-width: a800px; margin: 0 auto; }
+        h1 { color: #bb86fc; }
+        button { 
+            background-color: #bb86fc; 
+            border: none; 
+            padding: 10px 15px; 
+            color: #1a1a2e; 
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #444; }
+        th { color: #bb86fc; }
+        .positive { color: #69f0ae; }
+        .negative { color: #ff5252; }
+        .loading { color: #888; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Jupiter API Token Prices Test</h1>
+        <button id="fetch-button">მიიღე რეალური ფასები Jupiter-დან</button>
+        
+        <div id="status"></div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>ტოკენი</th>
+                    <th>ფასი</th>
+                    <th>24სთ ცვლილება</th>
+                </tr>
+            </thead>
+            <tbody id="prices-table">
+                <tr>
+                    <td colspan="3" class="loading">დააჭირეთ ღილაკს ფასების მისაღებად...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Jupiter API ენდპოინტები
+        const JUPITER_ENDPOINTS = {
+            PRICE: 'https://price.jup.ag/v4/price'
+        };
+
+        // ტოკენის მისამართები (Solana მეინქსელისთვის)
+        const TOKEN_ADDRESSES = {
+            SOL: 'So11111111111111111111111111111111111111112',
+            USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+            USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+            BTC: '9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E',
+            ETH: '2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk',
+            JUP: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZxfrEBUJ',
+            RAY: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R'
+        };
+
+        document.getElementById('fetch-button').addEventListener('click', fetchPrices);
+
+        // ფასების მიღება Jupiter-დან
+        async function fetchPrices() {
+            const statusEl = document.getElementById('status');
+            const tableEl = document.getElementById('prices-table');
+            
+            try {
+                statusEl.innerHTML = 'ხდება ფასების მიღება Jupiter-დან...';
+                tableEl.innerHTML = '<tr><td colspan="3" class="loading">მიმდინარეობს ფასების მიღება...</td></tr>';
+                
+                // ცალკეული ტოკენების მისამართების მიღება ზარისთვის
+                const addresses = Object.values(TOKEN_ADDRESSES).join(',');
+                
+                console.log('Calling Jupiter API:', `${JUPITER_ENDPOINTS.PRICE}?ids=${addresses}`);
+                
+                // Jupiter API-ის გამოძახება
+                const response = await fetch(`${JUPITER_ENDPOINTS.PRICE}?ids=${addresses}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Jupiter API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Received data:', data);
+                
+                // ცხრილის გასუფთავება
+                tableEl.innerHTML = '';
+                
+                // ყველა ტოკენი ცხრილში
+                Object.entries(TOKEN_ADDRESSES).forEach(([symbol, address]) => {
+                    const row = document.createElement('tr');
+                    
+                    if (data.data[address]) {
+                        const price = data.data[address].price;
+                        const change = data.data[address].priceChange24h || 0;
+                        const changeClass = change >= 0 ? 'positive' : 'negative';
+                        
+                        row.innerHTML = `
+                            <td>${symbol}</td>
+                            <td>$${price.toFixed(price < 0.01 ? 6 : 4)}</td>
+                            <td class="${changeClass}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</td>
+                        `;
+                    } else {
+                        row.innerHTML = `
+                            <td>${symbol}</td>
+                            <td colspan="2">ფასი არ მოიძებნა</td>
+                        `;
+                    }
+                    
+                    tableEl.appendChild(row);
+                });
+                
+                statusEl.innerHTML = `წარმატებით მიღებულია ${Object.keys(data.data).length} ტოკენის ფასი.`;
+                
+            } catch (error) {
+                console.error('Error fetching prices:', error);
+                statusEl.innerHTML = `შეცდომა: ${error.message}`;
+                tableEl.innerHTML = '<tr><td colspan="3" class="negative">ვერ მოხერხდა ფასების მიღება Jupiter API-დან.</td></tr>';
+            }
+        }
+    </script>
+</body>
+</html>

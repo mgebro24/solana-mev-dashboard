@@ -40,6 +40,7 @@
   
   <!-- Solana Wallet Integration -->
   <script src="wallet-connect.js" defer></script>
+  <script src="jupiter-api.js" defer></script>
   <script src="solana-services.js" defer></script>
   
   <!-- Added CSS for wallet and trading UI -->
@@ -224,12 +225,103 @@
             </tbody>
           </table>
         </div>
-      </div>
-      
-      <!-- Main Content -->
-      <div class="dashboard-main">
-        <!-- Arbitrage Opportunities Section -->
+        
+        <!-- Token Prices Card -->
         <div class="glass p-4 rounded-lg mb-6">
+          <h2 class="text-lg font-medium mb-2 flex justify-between items-center">
+            რეალური ფასები
+            <span class="real-time-indicator">
+              <span class="pulse"></span> ცოცხალი
+            </span>
+          </h2>
+          <div class="overflow-auto max-h-80">
+            <table class="w-full text-sm" id="token-prices-table">
+              <thead>
+                <tr class="text-gray-400 border-b border-gray-700">
+                  <th class="text-left pb-2">ტოკენი</th>
+                  <th class="text-right pb-2">ფასი (USD)</th>
+                  <th class="text-right pb-2">24ს ცვლილება</th>
+                </tr>
+              </thead>
+              <tbody id="token-prices-body">
+                <tr class="animate-pulse">
+                  <td colspan="3" class="text-center py-4 text-gray-400">იტვირთება რეალური ფასები Jupiter-დან...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Auto Trading Card -->
+        <div class="glass p-4 rounded-lg mb-6">
+          <h2 class="text-lg font-medium mb-2">ავტომატიზაცია</h2>
+          <div class="flex items-center">
+            არბიტრაჟის შესაძლებლობები
+            <span class="real-time-indicator ml-2">
+              <span class="pulse"></span> 2 წამში ერთხელ
+            </span>
+          </div>
+        </div>
+        
+        <!-- Wallet Integration Section -->
+        <div class="glass p-4 rounded-lg mb-6">
+          <h2 class="text-lg font-medium mb-2">საფულე</h2>
+          <div class="flex flex-col gap-2">
+            <div id="wallet-connect-container">
+              <button id="connect-wallet" class="btn-neo py-2 px-4 mr-2">
+                <i class="fas fa-wallet mr-2"></i> დააკავშირე საფულე
+              </button>
+              <button id="disconnect-wallet" class="btn-neo py-2 px-4 hidden">
+                <i class="fas fa-sign-out-alt mr-2"></i> გათიშვა
+              </button>
+            </div>
+            <div id="wallet-info" class="hidden">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="text-gray-400">მისამართი:</span>
+                <span id="wallet-address" class="font-mono text-xs break-all"></span>
+              </div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-gray-400">ბალანსი:</span>
+                <span id="total-balance" class="font-medium">0 SOL</span>
+                <span id="profit-indicator" class="text-xs text-green-400 ml-2"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Token Prices Section - New -->
+        <div class="glass p-4 rounded-lg mb-6">
+          <h2 class="text-lg font-medium mb-2 flex justify-between">
+            რეალური ფასები
+            <span class="text-xs text-gray-400">
+              განახლდა: <span id="last-update-time">-</span>
+              <span class="animate-pulse mx-1">●</span>
+            </span>
+          </h2>
+          <div class="overflow-y-auto max-h-80">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-gray-400 border-b border-gray-700">
+                  <th class="text-left pb-2">ტოკენი</th>
+                  <th class="text-right pb-2">ფასი (USD)</th>
+                  <th class="text-right pb-2">24სთ ცვლილება</th>
+                </tr>
+              </thead>
+              <tbody id="token-prices-body">
+                <tr>
+                  <td colspan="3" class="text-center py-4 text-gray-400">
+                    <div class="animate-pulse">იტვირთება ფასები...</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="dashboard-main">
+          <!-- Arbitrage Opportunities Section -->
+          <div class="glass p-4 rounded-lg mb-6">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-medium">არბიტრაჟის შესაძლებლობები</h2>
             <button id="toggle-advanced-arbitrage" class="btn-neo py-1 px-2 text-xs">გაფართოებული არბიტრაჟი</button>
@@ -542,7 +634,7 @@
   
   <!-- Footer with performance metrics -->
   <footer class="p-4 text-center text-xs text-gray-500">
-    <div>© 2025 Solana MEV Bot Dashboard - ყველა უფლება დაცულია</div>
+    <div> 2025 Solana MEV Bot Dashboard - ყველა უფლება დაცულია</div>
     <div id="performance-metrics" class="mt-2">
       <div class="text-purple-400">ჩატვირთვის სისწრაფის ოპტიმიზაცია ჩართულია...</div>
     </div>
@@ -559,14 +651,88 @@
   <script src="prices.js" defer></script>
   
   <!-- Secondary scripts loaded with defer -->
-  <script src="arbitrage.js" defer></script>
-  <script src="advanced-arbitrage.js" defer></script>
-  <script src="transactions.js" defer></script>
+  <script src="arbitrage-ui.js" defer></script>
   
-  <!-- Analytics loaded last -->
-  <script src="analytics.js" defer></script>
-  
+  <!-- Token Price UI Script -->
   <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // ტოკენების ფასების ცხრილის ელემენტი
+      const tokenPricesBody = document.getElementById('token-prices-body');
+      
+      // ფასების განახლების ფუნქცია
+      async function updateTokenPrices() {
+        try {
+          // Jupiter API-დან ფასების მიღება
+          const tokenPrices = await window.jupiterAPI.getAllTokenPrices();
+          
+          if (!tokenPrices || Object.keys(tokenPrices).length === 0) {
+            console.error('No token prices received');
+            return;
+          }
+          
+          // ცხრილის გასუფთავება
+          tokenPricesBody.innerHTML = '';
+          
+          // დავალაგოთ ტოკენები: ჯერ BASE_TOKENS, შემდეგ დანარჩენი ანბანურად
+          const baseTokens = window.jupiterAPI.BASE_TOKENS;
+          
+          // დავალაგოთ ყველა ტოკენი
+          const sortedTokens = Object.keys(tokenPrices).sort((a, b) => {
+            // თუ ორივე ან არცერთი არის საბაზისო ტოკენი, დავალაგოთ ანბანურად
+            const aIsBase = baseTokens.includes(a);
+            const bIsBase = baseTokens.includes(b);
+            
+            if (aIsBase && !bIsBase) return -1;
+            if (!aIsBase && bIsBase) return 1;
+            if (aIsBase && bIsBase) {
+              return baseTokens.indexOf(a) - baseTokens.indexOf(b);
+            }
+            
+            return a.localeCompare(b);
+          });
+          
+          // ცხრილის შევსება
+          sortedTokens.forEach(symbol => {
+            const tokenData = tokenPrices[symbol];
+            if (!tokenData) return;
+            
+            const price = parseFloat(tokenData.price).toFixed(tokenData.price < 0.01 ? 6 : 4);
+            const change = parseFloat(tokenData.change24h || 0).toFixed(2);
+            const isPositiveChange = change >= 0;
+            
+            const row = document.createElement('tr');
+            row.className = 'border-b border-gray-800 hover:bg-gray-800/30';
+            
+            row.innerHTML = `
+              <td class="py-2">${symbol}</td>
+              <td class="text-right py-2">$${price}</td>
+              <td class="text-right py-2 ${isPositiveChange ? 'text-green-400' : 'text-red-400'}">                
+                ${isPositiveChange ? '+' : ''}${change}%
+              </td>
+            `;
+            
+            tokenPricesBody.appendChild(row);
+          });
+          
+          // განახლების დროის განახლება
+          document.getElementById('last-update-time').textContent = new Date().toLocaleTimeString();
+          
+        } catch (error) {
+          console.error('Error updating token prices:', error);
+          tokenPricesBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-red-400">შეცდომა ფასების მიღებისას: ${error.message}</td></tr>`;
+        }
+      }
+      
+      // პირველი განახლება
+      updateTokenPrices();
+      
+      // განახლება ყოველ 2 წამში
+      setInterval(updateTokenPrices, 2000);
+      
+      // დავუმატოთ სლუშენერი სათაურზე, რომ ხელით განახლდეს
+      document.querySelector('#token-prices-table').parentElement.parentElement.querySelector('h2').addEventListener('click', updateTokenPrices);
+    });
+    
     // Update the current time display
     function updateCurrentTime() {
       const now = new Date();
@@ -733,8 +899,8 @@
           tableHTML += `
             <tr>
               <td class="py-2">${token}</td>
-              <td class="text-right">$${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td class="text-right ${changeClass}">${changeSymbol}${data.change24h.toFixed(2)}%</td>
+              <td class="text-right py-2">$${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="text-right py-2 ${changeClass}">${changeSymbol}${data.change24h.toFixed(2)}%</td>
             </tr>
           `;
         }
@@ -753,5 +919,105 @@
   <!-- New Broker Comparison Feature -->
   <script src="brokers.js"></script>
   <script src="broker-ui.js"></script>
+  
+  <!-- Add token API script BEFORE other scripts -->
+  <script>
+    // Top Solana tokens list - expanded to 20+ tokens
+    const TOP_SOLANA_TOKENS = [
+      { symbol: 'SOL', name: 'Solana', id: 'solana' },
+      { symbol: 'USDC', name: 'USD Coin', id: 'usd-coin' },
+      { symbol: 'USDT', name: 'Tether', id: 'tether' },
+      { symbol: 'BTC', name: 'Bitcoin (Sollet)', id: 'bitcoin' },
+      { symbol: 'ETH', name: 'Ethereum (Sollet)', id: 'ethereum' },
+      { symbol: 'RAY', name: 'Raydium', id: 'raydium' },
+      { symbol: 'SRM', name: 'Serum', id: 'serum' },
+      { symbol: 'MNGO', name: 'Mango', id: 'mango-markets' },
+      { symbol: 'STEP', name: 'Step Finance', id: 'step-finance' },
+      { symbol: 'ATLAS', name: 'Star Atlas', id: 'star-atlas' },
+      { symbol: 'POLIS', name: 'Star Atlas DAO', id: 'star-atlas-dao' },
+      { symbol: 'ORCA', name: 'Orca', id: 'orca' },
+      { symbol: 'FIDA', name: 'Bonfida', id: 'bonfida' },
+      { symbol: 'COPE', name: 'Cope', id: 'cope' },
+      { symbol: 'JUP', name: 'Jupiter', id: 'jupiter' },
+      { symbol: 'SAMO', name: 'Samoyedcoin', id: 'samoyedcoin' },
+      { symbol: 'BONK', name: 'Bonk', id: 'bonk' },
+      { symbol: 'DFL', name: 'DeFi Land', id: 'defi-land' },
+      { symbol: 'SLND', name: 'Solend', id: 'solend' },
+      { symbol: 'MEAN', name: 'Mean DAO', id: 'mean-dao' },
+      { symbol: 'DUST', name: 'Dust Protocol', id: 'dust-protocol' },
+      { symbol: 'TULIP', name: 'Tulip Protocol', id: 'tulip-protocol' },
+      { symbol: 'MSOL', name: 'Marinade staked SOL', id: 'marinade-staked-sol' },
+      { symbol: 'STSOL', name: 'Lido Staked SOL', id: 'lido-staked-sol' },
+      { symbol: 'JITO', name: 'Jito', id: 'jito' }
+    ];
+    
+    // Real-time token prices update function
+    async function fetchTokenPrices() {
+      try {
+        // Fetch prices from CoinGecko
+        const tokens = TOP_SOLANA_TOKENS.map(t => t.id).join(',');
+        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${tokens}&vs_currencies=usd&include_24hr_change=true`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Update prices table
+        const pricesBody = document.getElementById('token-prices-body');
+        if (!pricesBody) return;
+        
+        pricesBody.innerHTML = '';
+        
+        // Add tokens to table
+        TOP_SOLANA_TOKENS.forEach(token => {
+          if (data[token.id]) {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-gray-800 hover:bg-gray-800/30';
+            
+            const price = data[token.id].usd;
+            const change = data[token.id].usd_24h_change || 0;
+            const changeClass = change >= 0 ? 'text-green-400' : 'text-red-400';
+            
+            row.innerHTML = `
+              <td class="py-2">${token.symbol}</td>
+              <td class="text-right py-2">$${price.toFixed(price < 0.01 ? 6 : 2)}</td>
+              <td class="text-right py-2 ${changeClass}">
+                ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
+              </td>
+            `;
+            
+            pricesBody.appendChild(row);
+          }
+        });
+        
+        // Update last update time
+        const timeEl = document.getElementById('last-update-time');
+        if (timeEl) {
+          timeEl.textContent = new Date().toLocaleTimeString();
+        }
+        
+        console.log('Prices updated successfully');
+        return data;
+      } catch (error) {
+        console.error('Error fetching prices:', error);
+        const pricesBody = document.getElementById('token-prices-body');
+        if (pricesBody) {
+          pricesBody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-red-400">Error: ${error.message}</td></tr>`;
+        }
+      }
+    }
+    
+    // Start regular updates
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initial fetch
+      fetchTokenPrices();
+      
+      // Set interval - every 2 seconds
+      setInterval(fetchTokenPrices, 2000);
+    });
+  </script>
 </body>
 </html>
