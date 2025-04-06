@@ -319,21 +319,26 @@
             </div>
             
             <!-- Opportunity template (will be cloned by JS) -->
-            <template id="opportunity-template">
-              <div class="glass p-3 rounded-lg opportunity-item">
-                <div class="flex justify-between items-start mb-2">
-                  <div>
-                    <span class="text-sm font-medium opportunity-route">SOL → USDC → BTC → SOL</span>
-                    <div class="text-xs text-gray-400 opportunity-dexes">Raydium, Jupiter, Orca</div>
-                  </div>
-                  <span class="text-green-400 text-sm opportunity-profit">+1.8%</span>
+            <div id="opportunity-template" class="glass p-3 rounded-lg opportunity-item hidden">
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs px-2 py-0.5 rounded border opportunity-type">მარტივი</span>
+                <span class="text-green-400 text-sm opportunity-profit">+1.8%</span>
+              </div>
+              <div class="opportunity-details mb-2">
+                <div class="flex justify-between mb-1 text-xs">
+                  <span>მიმდინარე: SOL → USDC</span>
+                  <span class="text-gray-400">$0.14 მოგება</span>
                 </div>
-                <div class="flex justify-between items-center">
-                  <div class="text-xs text-gray-300">Est. profit: <span class="text-green-400 opportunity-value">0.14 SOL</span></div>
-                  <button class="trade-btn opportunity-execute" data-wallet-required>Execute</button>
+                <div class="flex justify-between text-xs text-gray-400">
+                  <span>ყიდვა: Jupiter @ 47.21</span>
+                  <span>გაყიდვა: Raydium @ 48.10</span>
                 </div>
               </div>
-            </template>
+              <div class="flex justify-between items-center">
+                <div class="text-xs text-green-500 font-medium">შესრულების დრო: ~500ms</div>
+                <button class="trade-btn execute-opportunity" data-wallet-required>შესრულება</button>
+              </div>
+            </div>
           </div>
         </div>
         

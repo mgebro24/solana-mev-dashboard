@@ -1,7 +1,6 @@
 /**
  * Services Module for Solana MEV Dashboard
- * მსახურებების მოდული Solana MEV Dashboard-ისთვის, რომელიც უზრუნველყოფს API ინტეგრაციებს,
- * WebSocket კონექშენებს და Solana საფულის ინტეგრაციებს
+ * This module provides API integrations, WebSocket connections, and Solana wallet integrations
  */
 
 // API endpoints
@@ -38,44 +37,44 @@ function isCacheValid(cacheEntry, ttl) {
   return cacheEntry.data !== null && (Date.now() - cacheEntry.timestamp) < ttl;
 }
 
-// მთავარი სერვისების ობიექტი
+// Main services object
 const services = {
-  // Solana საფულის ინტეგრაციები
+  // Solana wallet integrations
   wallet: {
-    // მიმდინარე კონფიგურაცია
+    // Current configuration
     config: {
       connected: false,
-      address: null,        // Solana საფულის მისამართი
-      balance: 0,           // SOL ბალანსი
-      network: 'mainnet-beta', // Solana ქსელი (mainnet-beta, testnet, devnet)
-      provider: null,       // Phantom საფულის პროვაიდერი
+      address: null,        // Solana wallet address
+      balance: 0,           // SOL balance
+      network: 'mainnet-beta', // Solana network (mainnet-beta, testnet, devnet)
+      provider: null,       // Phantom wallet provider
       type: null            // 'phantom', 'solflare'
     },
     
-    // Solana საფულის პროვაიდერები
+    // Phantom wallet providers
     providers: {
       phantom: null,
       solflare: null
     },
     
-    // Phantom საფულის ინიციალიზაცია
+    // Initialize Phantom wallet
     async initPhantom() {
       console.log('Initializing Phantom wallet service...');
       
-      // შევამოწმოთ არის თუ არა Phantom საფულე ხელმისაწვდომი
+      // Check if Phantom wallet is available
       if (window.solana && window.solana.isPhantom) {
         try {
           this.providers.phantom = window.solana;
           
-          // მოვუსმინოთ მდგომარეობის ცვლილებას
+          // Listen for state changes
           window.solana.on('connect', () => {
             console.log('Phantom wallet connected:', window.solana.publicKey.toString());
             this.config.address = window.solana.publicKey.toString();
             this.config.connected = true;
             this.config.type = 'phantom';
             this.updateSolanaBalance();
-              
-            // დავაინფორმოთ აპლიკაცია საფულის მდგომარეობის ცვლილების შესახებ
+            
+            // Inform the application about wallet state change
             const event = new CustomEvent('wallet-status-changed', { 
               detail: { 
                 connected: true, 
@@ -86,19 +85,20 @@ const services = {
             window.dispatchEvent(event);
           });
           
-          // მოვუსმინოთ გამოერთებას
+          // Listen for disconnect
           window.solana.on('disconnect', () => {
             console.log('Phantom wallet disconnected');
-            this.disconnectPhantom(false); // არ დავუძახოთ disconnect ბრძანებას კვლავ რათა თავიდან ავიცილოთ უსასრულო ციკლი
+            this.disconnectPhantom(false); // Don't call disconnect command again to avoid infinite loop
           });
           
-          // მოვუსმინოთ ანგარიშის ცვლილებას
+          // Listen for account change
           window.solana.on('accountChanged', (publicKey) => {
             if (publicKey) {
               console.log('Phantom account changed:', publicKey.toString());
               this.config.address = publicKey.toString();
               this.updateSolanaBalance();
               
+              // Inform the application about wallet state change
               const event = new CustomEvent('wallet-status-changed', { 
                 detail: { 
                   connected: true, 
@@ -108,6 +108,7 @@ const services = {
               });
               window.dispatchEvent(event);
             } else {
+              // Disconnect if publicKey is null
               this.disconnectPhantom();
             }
           });
@@ -124,7 +125,7 @@ const services = {
       }
     },
     
-    // Phantom საფულის დაკავშირება
+    // Connect to Phantom wallet
     async connectPhantom() {
       console.log('Connecting to Phantom wallet...');
       
@@ -137,7 +138,7 @@ const services = {
       }
       
       try {
-        // მოვითხოვოთ ანგარიშის დაკავშირება
+        // Request connection to account
         await this.providers.phantom.connect();
         
         if (this.providers.phantom.publicKey) {
@@ -149,12 +150,12 @@ const services = {
           this.config.provider = this.providers.phantom;
           this.config.network = this.providers.phantom.networkVersion || 'mainnet-beta';
           
-          // მივიღოთ SOL ბალანსი
+          // Get SOL balance
           await this.updateSolanaBalance();
           
           console.log('Connected to Phantom wallet:', this.config);
           
-          // დავაინფორმოთ აპლიკაცია წარმატებული დაკავშირების შესახებ
+          // Inform application about successful connection
           const event = new CustomEvent('wallet-connected', { 
             detail: { 
               address: publicKey,
@@ -180,7 +181,7 @@ const services = {
       }
     },
     
-    // Phantom საფულის გამოერთება
+    // Disconnect from Phantom wallet
     async disconnectPhantom(triggerDisconnect = true) {
       console.log('Disconnecting from Phantom wallet...');
       
@@ -192,47 +193,45 @@ const services = {
         }
       }
       
-      // განვაახლოთ მდგომარეობა
+      // Update state
       this.config.connected = false;
       this.config.address = null;
       this.config.balance = 0;
       this.config.provider = null;
       this.config.type = null;
       
-      // დავაინფორმოთ აპლიკაცია საფულის გამოერთების შესახებ
+      // Inform application about wallet disconnection
       const event = new CustomEvent('wallet-disconnected', { detail: { type: 'phantom' } });
       window.dispatchEvent(event);
       
       return { success: true };
     },
     
-    // Solana ბალანსის განახლება
+    // Update Solana balance
     async updateSolanaBalance() {
       if (!this.config.connected || !this.config.address) {
         return { success: false, error: 'Wallet not connected' };
       }
       
       try {
-        // ნამდვილი იმპლემენტაციისთვის გამოვიყენებთ Solana Web3.js ბიბლიოთეკას
-        // ამ დემოსთვის კი გამოვიყენებთ სიმულაციას
+        // For real implementation, we would use Solana Web3.js library
+        // For this demo, we'll use simulation
         
-        // სიმულირებული ბალანსი დემოსთვის
-        const simulatedBalance = Math.random() * 20 + 0.5; // 0.5-20.5 SOL
-        this.config.balance = parseFloat(simulatedBalance.toFixed(4));
+        // Simulated balance for demo
+        const simulatedBalance = 5.5 + (Math.random() * 2).toFixed(2);
         
-        // ნამდვილი იმპლემენტაცია იქნებოდა მსგავსი:
-        /*
-        // @solana/web3.js უნდა იყოს დამატებული პროექტში
-        const connection = new solanaWeb3.Connection(
-          solanaWeb3.clusterApiUrl(this.config.network),
-          'confirmed'
-        );
+        // Real implementation would be something like:
+        /* 
+        const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl(this.config.network));
         const publicKey = new solanaWeb3.PublicKey(this.config.address);
         const balance = await connection.getBalance(publicKey);
         
-        // ლამპორტებიდან SOL-ში გადაყვანა (1 SOL = 1e9 ლამპორტი)
-        this.config.balance = balance / 1e9;
+        // Convert lamports to SOL (1 SOL = 1e9 lamports)
+        return balance / 1000000000;
         */
+        
+        // Update balance
+        this.config.balance = parseFloat(simulatedBalance);
         
         return { success: true, balance: this.config.balance };
       } catch (error) {
@@ -241,7 +240,7 @@ const services = {
       }
     },
     
-    // Solana ქსელის შემოწმება
+    // Get Solana network
     getSolanaNetwork() {
       const networks = {
         'mainnet-beta': 'Solana Mainnet',
@@ -253,41 +252,45 @@ const services = {
       return networks[this.config.network] || 'Unknown Solana Network';
     },
     
-    // საფულის მდგომარეობის მიღება
+    // Get wallet state
     getWalletState() {
       return this.config;
     },
     
-    // შევამოწმოთ არის თუ არა საფულე დაკავშირებული
+    // Check if wallet is connected
     isConnected() {
       return this.config.connected;
     },
     
-    // მოკლე დახმარება Phantom საფულის დასაინსტალირებლად
+    // Short help for installing Phantom wallet
     openPhantomInstallHelp() {
       window.open('https://phantom.app/', '_blank');
     },
     
-    // ტრანზაქციის ხელმოწერა და გაგზავნა
+    // Sign and send transaction
     async signAndSendTransaction(transaction) {
       if (!this.config.connected || !this.config.provider) {
         return { success: false, error: 'Wallet not connected' };
       }
       
       try {
-        // დემო რეჟიმში - ტრანზაქციის სიმულაცია
-        const simulatedSignature = 'sim_' + Math.random().toString(36).substring(2, 15);
-        console.log('Simulating transaction signature:', simulatedSignature);
+        // In demo mode - simulate transaction
+        console.log('Simulating transaction:', transaction);
         
-        // რეალური იმპლემენტაცია იქნებოდა:
+        // Real implementation would be:
         /*
-        const { signature } = await this.config.provider.signAndSendTransaction(transaction);
+        const solana = window.solana;
+        const signedTransaction = await solana.signTransaction(transaction);
+        const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl(this.config.network));
+        const signature = await connection.sendRawTransaction(signedTransaction.serialize());
         await connection.confirmTransaction(signature);
+        return signature;
         */
         
+        // Simulate transaction success
         return {
           success: true,
-          signature: simulatedSignature
+          signature: 'demo_' + Math.random().toString(36).substring(2, 15)
         };
       } catch (error) {
         console.error('Error signing transaction:', error);
@@ -296,7 +299,7 @@ const services = {
     }
   },
   
-  // API ინტეგრაციები
+  // API integrations
   api: {
     // Fetch with timeout and retry logic
     async fetchWithRetry(url, options = {}, retries = 3, timeout = 5000) {
@@ -778,6 +781,157 @@ const services = {
         console.error('Error closing network socket:', error);
         return false;
       }
+    },
+    
+    // Initialize WebSocket connection to network
+    initNetworkSocket() {
+      try {
+        // Close existing connection if any
+        if (this.simulatedNetworkSocket) {
+          clearInterval(this.simulatedNetworkSocket);
+          this.simulatedNetworkSocket = null;
+        }
+        
+        // Try to establish real WebSocket connection
+        try {
+          const wsUrl = "wss://realtime.jupiter-api.io/prices";
+          console.log("Connecting to network socket:", wsUrl);
+          
+          // Check if WebSocket is available in the environment
+          if (typeof WebSocket !== 'undefined') {
+            networkSocket = new WebSocket(wsUrl);
+            
+            networkSocket.onopen = () => {
+              console.log("Network socket connection established");
+              const tokenIds = Object.values(TOKEN_ADDRESSES).join(',');
+              networkSocket.send(JSON.stringify({ op: "subscribe", channel: "prices", markets: tokenIds }));
+            };
+            
+            networkSocket.onmessage = (event) => {
+              try {
+                const data = JSON.parse(event.data);
+                console.log("Network socket data received:", data);
+                // Process data here
+              } catch (parseError) {
+                console.error("Error parsing socket data:", parseError);
+              }
+            };
+            
+            networkSocket.onerror = (error) => {
+              console.error("Network socket error:", error);
+              this.initSimulatedNetworkSocket();
+            };
+            
+            networkSocket.onclose = () => {
+              console.log("Network socket connection closed");
+              this.initSimulatedNetworkSocket();
+            };
+          } else {
+            console.warn("WebSocket not available in this environment");
+            this.initSimulatedNetworkSocket();
+          }
+        } catch (socketError) {
+          console.error("Error establishing WebSocket connection:", socketError);
+          this.initSimulatedNetworkSocket();
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error initializing network socket:', error);
+        // If there's an error, still try to initialize simulated socket
+        try {
+          this.initSimulatedNetworkSocket();
+        } catch (simulatedError) {
+          console.error('Error initializing simulated network socket:', simulatedError);
+        }
+        return false;
+      }
+    },
+    
+    initSimulatedNetworkSocket() {
+      try {
+        console.log('Initializing simulated network socket...');
+        
+        // Simulate network WebSocket for arbitrage opportunities
+        try {
+          this.simulatedNetworkSocket = setInterval(() => {
+            try {
+              // Generate random arbitrage opportunity
+              const tokens = ['SOL', 'BTC', 'ETH', 'USDC', 'USDT', 'JUP', 'RAY'];
+              const dexes = ['Jupiter', 'Raydium', 'Orca', 'OpenBook'];
+              
+              const baseToken = tokens[Math.floor(Math.random() * tokens.length)];
+              let quoteToken;
+              do {
+                quoteToken = tokens[Math.floor(Math.random() * tokens.length)];
+              } while (quoteToken === baseToken);
+              
+              const sourceDex = dexes[Math.floor(Math.random() * dexes.length)];
+              let targetDex;
+              do {
+                targetDex = dexes[Math.floor(Math.random() * dexes.length)];
+              } while (targetDex === sourceDex);
+              
+              // Generate profit percentage (0.1% to 2.5%)
+              const profitPercent = (Math.random() * 2.4 + 0.1).toFixed(2);
+              
+              const arbitrage = {
+                id: 'arb_' + Math.random().toString(36).substring(2, 10),
+                timestamp: Date.now(),
+                baseToken,
+                quoteToken,
+                sourceDex,
+                targetDex,
+                profitPercent: parseFloat(profitPercent),
+                estimatedProfit: (Math.random() * 0.5).toFixed(3),
+                confidence: Math.random() * 100 // 0-100%
+              };
+              
+              // Dispatch custom event for arbitrage opportunity
+              const event = new CustomEvent('arbitrage-opportunity', { detail: arbitrage });
+              window.dispatchEvent(event);
+              
+              // 20% chance to generate a triangular arbitrage opportunity
+              if (Math.random() < 0.2) {
+                let intermediateToken;
+                do {
+                  intermediateToken = tokens[Math.floor(Math.random() * tokens.length)];
+                } while (intermediateToken === baseToken || intermediateToken === quoteToken);
+                
+                const triangularArbitrage = {
+                  id: 'tri_' + Math.random().toString(36).substring(2, 10),
+                  timestamp: Date.now(),
+                  type: 'triangular',
+                  path: [baseToken, intermediateToken, quoteToken, baseToken],
+                  exchanges: [
+                    dexes[Math.floor(Math.random() * dexes.length)],
+                    dexes[Math.floor(Math.random() * dexes.length)],
+                    dexes[Math.floor(Math.random() * dexes.length)]
+                  ],
+                  profitPercent: (Math.random() * 3.4 + 0.3).toFixed(2),
+                  estimatedProfit: (Math.random() * 0.7).toFixed(3),
+                  complexity: 'medium',
+                  executionTime: Math.floor(Math.random() * 500 + 500) // 500-1000ms
+                };
+                
+                // Dispatch custom event for triangular arbitrage opportunity
+                const triangularEvent = new CustomEvent('triangular-arbitrage', { detail: triangularArbitrage });
+                window.dispatchEvent(triangularEvent);
+              }
+            } catch (intervalError) {
+              console.error('Error in simulated network interval:', intervalError);
+            }
+          }, 25000); // New arbitrage opportunity every 25 seconds
+          
+          return true;
+        } catch (setupError) {
+          console.error('Error setting up simulated network interval:', setupError);
+          return false;
+        }
+      } catch (error) {
+        console.error('Error initializing simulated network socket:', error);
+        return false;
+      }
     }
   },
   
@@ -789,15 +943,50 @@ const services = {
         clearInterval(this.arbitrageUpdateInterval);
       }
       
+      console.log(`Starting arbitrage updates with interval: ${intervalMs}ms`);
+      
       // Set up new interval for updating arbitrage opportunities
-      this.arbitrageUpdateInterval = setInterval(() => {
+      this.arbitrageUpdateInterval = setInterval(async () => {
         try {
-          // Generate new sample data (temporary for testing)
-          const opportunities = {
-            simple: this.generateSampleSimpleArbitrageOpportunities(),
-            triangular: this.generateSampleTriangularArbitrageOpportunities(),
-            complex: this.generateSampleComplexArbitrageOpportunities()
+          let opportunities = {
+            simple: [],
+            triangular: [],
+            complex: []
           };
+          
+          // Try to get real arbitrage opportunities from Jupiter API first
+          if (window.jupiterAPI) {
+            try {
+              console.log('Fetching triangular arbitrage opportunities from Jupiter API...');
+              const triangularOpps = await window.jupiterAPI.findTriangularArbitrageOpportunities();
+              
+              if (triangularOpps && triangularOpps.length > 0) {
+                console.log(`Found ${triangularOpps.length} triangular arbitrage opportunities`);
+                opportunities.triangular = triangularOpps;
+              } else {
+                console.log('No triangular arbitrage opportunities found from Jupiter API');
+              }
+              
+              // Get simple (DEX) arbitrage opportunities
+              const simpleOpps = await window.jupiterAPI.findDexArbitrageOpportunities();
+              if (simpleOpps && simpleOpps.length > 0) {
+                console.log(`Found ${simpleOpps.length} simple arbitrage opportunities`);
+                opportunities.simple = simpleOpps;
+              }
+            } catch (apiError) {
+              console.error('Error fetching opportunities from Jupiter API:', apiError);
+            }
+          }
+          
+          // If we didn't get any real opportunities, generate sample ones
+          if (opportunities.triangular.length === 0 && opportunities.simple.length === 0) {
+            console.log('Generating sample arbitrage opportunities as fallback...');
+            opportunities = {
+              simple: this.generateSampleSimpleArbitrageOpportunities(),
+              triangular: this.generateSampleTriangularArbitrageOpportunities(),
+              complex: this.generateSampleComplexArbitrageOpportunities()
+            };
+          }
           
           // Dispatch event with all opportunities
           const event = new CustomEvent('arbitrage-opportunities', {
@@ -805,7 +994,25 @@ const services = {
           });
           
           window.dispatchEvent(event);
-          console.log('Dispatched arbitrage opportunities event', opportunities);
+          
+          // For backward compatibility with existing code
+          const opportunitiesUpdatedEvent = new CustomEvent('arbitrage-opportunities-updated', {
+            detail: {
+              opportunities: [
+                ...opportunities.simple,
+                ...opportunities.triangular,
+                ...opportunities.complex
+              ],
+              timestamp: Date.now()
+            }
+          });
+          window.dispatchEvent(opportunitiesUpdatedEvent);
+          
+          console.log('Dispatched arbitrage opportunities events with:', {
+            simple: opportunities.simple.length,
+            triangular: opportunities.triangular.length,
+            complex: opportunities.complex.length
+          });
           
           // Update last update timestamp
           this.lastArbitrageUpdate = Date.now();
@@ -820,7 +1027,6 @@ const services = {
         }
       }, intervalMs);
       
-      console.log(`Started arbitrage updates with interval: ${intervalMs}ms`);
       return true;
     } catch (error) {
       console.error('Error starting arbitrage updates:', error);
@@ -843,10 +1049,173 @@ const services = {
     }
   },
   
+  // Generate sample simple arbitrage opportunities for testing
+  generateSampleSimpleArbitrageOpportunities() {
+    try {
+      const tokens = ['SOL', 'BTC', 'ETH', 'USDC', 'USDT', 'JUP', 'RAY'];
+      const opportunities = [];
+      
+      // Generate 0-3 simple opportunities
+      const count = Math.floor(Math.random() * 4); // 0-3 opportunities
+      
+      for (let i = 0; i < count; i++) {
+        // Pick two random tokens
+        const token1 = tokens[Math.floor(Math.random() * tokens.length)];
+        let token2 = tokens[Math.floor(Math.random() * tokens.length)];
+        
+        // Make sure the tokens are different
+        while (token2 === token1) {
+          token2 = tokens[Math.floor(Math.random() * tokens.length)];
+        }
+        
+        // Choose two random DEXes
+        const dexes = ['Jupiter', 'Raydium', 'Orca', 'Serum', 'Saber'];
+        const dex1 = dexes[Math.floor(Math.random() * dexes.length)];
+        let dex2 = dexes[Math.floor(Math.random() * dexes.length)];
+        
+        // Make sure the DEXes are different
+        while (dex2 === dex1) {
+          dex2 = dexes[Math.floor(Math.random() * dexes.length)];
+        }
+        
+        // Calculate a random profit percentage (0.3% to 3.7%)
+        const profitPercent = (Math.random() * 3.4 + 0.3).toFixed(2);
+        
+        // Create the opportunity object
+        opportunities.push({
+          id: `simple_${Date.now()}_${i}`,
+          type: 'simple',
+          fromToken: token1,
+          toToken: token2,
+          buyDex: dex1,
+          sellDex: dex2,
+          profitPercent: profitPercent,
+          estimatedProfit: (parseFloat(profitPercent) * 0.01 * 100).toFixed(3),
+          timestamp: Date.now(),
+          riskLevel: parseFloat(profitPercent) > 2 ? 'high' : parseFloat(profitPercent) > 1 ? 'medium' : 'low',
+          estimatedGas: (Math.random() * 0.001 + 0.0005).toFixed(6),
+          minAmount: (Math.random() * 5 + 1).toFixed(2),
+          buyPrice: (Math.random() * 10 + 90).toFixed(2),
+          sellPrice: (Math.random() * 10 + 90 + parseFloat(profitPercent)).toFixed(2)
+        });
+      }
+      
+      // Add one guaranteed opportunity if there are none
+      if (opportunities.length === 0 && Math.random() > 0.3) {
+        const token1 = 'SOL';
+        const token2 = 'USDC';
+        
+        const profitPercent = (Math.random() * 1.5 + 0.8).toFixed(2);
+        
+        opportunities.push({
+          id: `simple_guaranteed_${Date.now()}`,
+          type: 'simple',
+          fromToken: token1,
+          toToken: token2,
+          buyDex: 'Jupiter',
+          sellDex: 'Raydium',
+          profitPercent: profitPercent,
+          estimatedProfit: (parseFloat(profitPercent) * 0.01 * 100).toFixed(3),
+          timestamp: Date.now(),
+          riskLevel: parseFloat(profitPercent) > 2 ? 'high' : parseFloat(profitPercent) > 1 ? 'medium' : 'low',
+          estimatedGas: '0.000712',
+          minAmount: '2.50',
+          buyPrice: '120.45',
+          sellPrice: '121.55'
+        });
+      }
+      
+      return opportunities;
+    } catch (error) {
+      console.error('Error generating sample simple arbitrage opportunities:', error);
+      return [];
+    }
+  },
+  
+  // Generate sample triangular arbitrage opportunities for testing
+  generateSampleTriangularArbitrageOpportunities() {
+    try {
+      const tokens = ['SOL', 'BTC', 'ETH', 'USDC', 'USDT', 'JUP', 'RAY'];
+      const opportunities = [];
+      
+      // Generate 0-2 triangular opportunities
+      const count = Math.floor(Math.random() * 3); // 0-2 opportunities
+      
+      for (let i = 0; i < count; i++) {
+        // Pick three random tokens
+        const token1 = tokens[Math.floor(Math.random() * tokens.length)];
+        let token2 = tokens[Math.floor(Math.random() * tokens.length)];
+        let token3 = tokens[Math.floor(Math.random() * tokens.length)];
+        
+        // Make sure all tokens are different
+        while (token2 === token1 || token2 === token3) {
+          token2 = tokens[Math.floor(Math.random() * tokens.length)];
+        }
+        
+        while (token3 === token1 || token3 === token2) {
+          token3 = tokens[Math.floor(Math.random() * tokens.length)];
+        }
+        
+        // Random DEXes
+        const dexes = ['Jupiter', 'Raydium', 'Orca', 'Serum', 'Saber'];
+        
+        // Calculate a random profit percentage (0.3% to 3.7%)
+        const profitPercent = (Math.random() * 3.4 + 0.3).toFixed(2);
+        
+        // Create the opportunity object
+        opportunities.push({
+          id: `tri_${Date.now()}_${i}`,
+          type: 'triangular',
+          baseToken: token1,
+          route: [
+            { from: token1, to: token2, rate: 1.02, dex: dexes[Math.floor(Math.random() * dexes.length)] },
+            { from: token2, to: token3, rate: 1.03, dex: dexes[Math.floor(Math.random() * dexes.length)] },
+            { from: token3, to: token1, rate: 1.015, dex: dexes[Math.floor(Math.random() * dexes.length)] }
+          ],
+          triangularFactor: 1.066,
+          feeFactor: 0.991,
+          profitPercent: profitPercent,
+          estimatedProfit: (parseFloat(profitPercent) * 0.01 * 100).toFixed(3),
+          timestamp: Date.now(),
+          riskLevel: parseFloat(profitPercent) > 2 ? 'high' : parseFloat(profitPercent) > 1 ? 'medium' : 'low',
+          estimatedGas: (Math.random() * 0.001 + 0.001).toFixed(6),
+          minAmount: (Math.random() * 10 + 5).toFixed(2)
+        });
+      }
+      
+      // Add one guaranteed opportunity if there are none
+      if (opportunities.length === 0 && Math.random() > 0.3) {
+        opportunities.push({
+          id: `tri_guaranteed_${Date.now()}`,
+          type: 'triangular',
+          baseToken: 'USDC',
+          route: [
+            { from: 'USDC', to: 'SOL', rate: 1.05, dex: 'Jupiter' },
+            { from: 'SOL', to: 'BTC', rate: 1.03, dex: 'Raydium' },
+            { from: 'BTC', to: 'USDC', rate: 1.02, dex: 'Orca' }
+          ],
+          triangularFactor: 1.1,
+          feeFactor: 0.991,
+          profitPercent: '1.78',
+          estimatedProfit: '1.780',
+          timestamp: Date.now(),
+          riskLevel: 'medium',
+          estimatedGas: '0.001245',
+          minAmount: '10.00'
+        });
+      }
+      
+      return opportunities;
+    } catch (error) {
+      console.error('Error generating sample triangular arbitrage opportunities:', error);
+      return [];
+    }
+  },
+  
   // Generate sample complex arbitrage opportunities for testing
   generateSampleComplexArbitrageOpportunities() {
     try {
-      const tokens = Object.keys(this.tokens);
+      const tokens = ['SOL', 'BTC', 'ETH', 'USDC', 'USDT', 'JUP', 'RAY'];
       const opportunities = [];
       
       // Generate 1-3 complex opportunities
@@ -919,10 +1288,9 @@ const services = {
     try {
       // Generate some sample arbitrage opportunities for testing
       const sampleOpportunities = {
-        simple: this.generateSampleSimpleArbitrage(),
-        triangular: this.generateSampleTriangularArbitrage(),
-        complex: this.generateSampleComplexArbitrage(),
-        timestamp: Date.now()
+        simple: this.generateSampleSimpleArbitrageOpportunities(),
+        triangular: this.generateSampleTriangularArbitrageOpportunities(),
+        complex: this.generateSampleComplexArbitrageOpportunities()
       };
       
       // Dispatch event with all arbitrage opportunities
@@ -943,153 +1311,6 @@ const services = {
         error: error.message
       };
     }
-  },
-  
-  // Generate sample simple arbitrage opportunities
-  generateSampleSimpleArbitrage() {
-    const opportunities = [];
-    const tokens = ['SOL', 'USDC', 'ETH', 'BTC', 'USDT', 'RAY', 'MSOL'];
-    const dexes = ['Jupiter', 'Raydium', 'Orca', 'Openbook'];
-    
-    // Generate 2-3 opportunities
-    for (let i = 0; i < Math.floor(Math.random() * 2) + 2; i++) {
-      const tokenIn = tokens[Math.floor(Math.random() * tokens.length)];
-      const tokenOut = tokens[Math.floor(Math.random() * tokens.length)];
-      
-      if (tokenIn === tokenOut) continue;
-      
-      const dexBuy = dexes[Math.floor(Math.random() * dexes.length)];
-      let dexSell;
-      do {
-        dexSell = dexes[Math.floor(Math.random() * dexes.length)];
-      } while (dexSell === dexBuy);
-      
-      const priceBuy = parseFloat((Math.random() * 10 + 90).toFixed(2)); // 90-100
-      const priceSell = parseFloat((priceBuy * (1 + (Math.random() * 0.05 + 0.01))).toFixed(2)); // 1-6% higher
-      
-      const profitPercent = ((priceSell / priceBuy) - 1) * 100;
-      
-      opportunities.push({
-        type: 'simple',
-        tokenIn,
-        tokenOut,
-        dexBuy,
-        dexSell,
-        priceBuy,
-        priceSell,
-        profitPercent: profitPercent.toFixed(2),
-        estimatedProfit: ((priceSell - priceBuy) * 0.1).toFixed(4), // 0.1 token
-        timestamp: Date.now()
-      });
-    }
-    
-    return opportunities;
-  },
-  
-  // Generate sample triangular arbitrage opportunities
-  generateSampleTriangularArbitrage() {
-    const opportunities = [];
-    const tokens = ['SOL', 'USDC', 'ETH', 'BTC', 'USDT', 'RAY', 'MSOL'];
-    const dexes = ['Jupiter', 'Raydium', 'Orca', 'Openbook'];
-    
-    // Generate 1-2 opportunities
-    for (let i = 0; i < Math.floor(Math.random() * 2) + 1; i++) {
-      // Select three different tokens
-      const tokenIndices = [];
-      while (tokenIndices.length < 3) {
-        const index = Math.floor(Math.random() * tokens.length);
-        if (!tokenIndices.includes(index)) {
-          tokenIndices.push(index);
-        }
-      }
-      
-      const tokenA = tokens[tokenIndices[0]];
-      const tokenB = tokens[tokenIndices[1]];
-      const tokenC = tokens[tokenIndices[2]];
-      
-      // Random rates with a small arbitrage opportunity
-      const rateAB = parseFloat((1 + Math.random() * 0.5).toFixed(4));
-      const rateBC = parseFloat((1 + Math.random() * 0.5).toFixed(4));
-      const rateCA = parseFloat((1 / (rateAB * rateBC) * (1 + (Math.random() * 0.05 + 0.01))).toFixed(4));
-      
-      const profitPercent = ((rateAB * rateBC * rateCA) - 1) * 100;
-      
-      opportunities.push({
-        type: 'triangular',
-        route: [
-          { from: tokenA, to: tokenB, rate: rateAB, dex: dexes[Math.floor(Math.random() * dexes.length)] },
-          { from: tokenB, to: tokenC, rate: rateBC, dex: dexes[Math.floor(Math.random() * dexes.length)] },
-          { from: tokenC, to: tokenA, rate: rateCA, dex: dexes[Math.floor(Math.random() * dexes.length)] }
-        ],
-        profitPercent: profitPercent.toFixed(2),
-        estimatedProfit: ((profitPercent / 100) * parseFloat((Math.random() * 5 + 5).toFixed(2))).toFixed(4), // $5-10 profit
-        timestamp: Date.now()
-      });
-    }
-    
-    return opportunities;
-  },
-  
-  // Generate sample complex arbitrage opportunities
-  generateSampleComplexArbitrage() {
-    const opportunities = [];
-    const tokens = ['SOL', 'USDC', 'ETH', 'BTC', 'USDT', 'RAY', 'MSOL', 'BONK', 'ORCA'];
-    const dexes = ['Jupiter', 'Raydium', 'Orca', 'Openbook'];
-    
-    // Just one complex opportunity
-    if (Math.random() > 0.3) { // 70% chance to get a complex opp
-      const path = [];
-      const usedTokens = new Set();
-      const pathLength = Math.floor(Math.random() * 2) + 4; // 4-5 steps
-      
-      let currentToken = tokens[Math.floor(Math.random() * tokens.length)];
-      usedTokens.add(currentToken);
-      
-      for (let j = 0; j < pathLength; j++) {
-        let nextToken;
-        do {
-          nextToken = tokens[Math.floor(Math.random() * tokens.length)];
-        } while (usedTokens.has(nextToken) && usedTokens.size < tokens.length);
-        
-        usedTokens.add(nextToken);
-        
-        path.push({
-          from: currentToken,
-          to: nextToken,
-          dex: dexes[Math.floor(Math.random() * dexes.length)],
-          rate: parseFloat((1 + Math.random() * 0.2).toFixed(4))
-        });
-        
-        currentToken = nextToken;
-      }
-      
-      // Close the loop
-      path.push({
-        from: currentToken,
-        to: path[0].from,
-        dex: dexes[Math.floor(Math.random() * dexes.length)],
-        rate: parseFloat((1 + Math.random() * 0.1).toFixed(4))
-      });
-      
-      // Calculate compound profit
-      let profitFactor = 1;
-      path.forEach(step => {
-        profitFactor *= step.rate;
-      });
-      
-      const profitPercent = (profitFactor - 1) * 100;
-      
-      opportunities.push({
-        type: 'complex',
-        path: path,
-        profitPercent: profitPercent.toFixed(2),
-        estimatedProfit: ((profitPercent / 100) * parseFloat((Math.random() * this.generateRandomInt(10, 20)).toFixed(2))).toFixed(4),
-        complexity: path.length > 5 ? 'high' : 'medium',
-        timestamp: Date.now()
-      });
-    }
-    
-    return opportunities;
   },
   
   // Helper to generate random integer

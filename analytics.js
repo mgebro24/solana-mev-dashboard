@@ -293,7 +293,7 @@ const marketVisualizer = {
     
     const chartData = this.generateChartData(token, priceHistory, options.timeframe || 24);
     if (!chartData) {
-      element.innerHTML = '<div class="text-center py-4 text-gray-400">არასაკმარისი მონაცემები</div>';
+      element.innerHTML = '<div class="text-center py-4 text-gray-400">Insufficient data</div>';
       return;
     }
     
@@ -302,8 +302,8 @@ const marketVisualizer = {
     
     element.innerHTML = `
       <div class="text-center py-2 glass rounded-lg">
-        <div class="text-sm font-medium">${token} ფასის გრაფიკი</div>
-        <div class="text-xs text-gray-400">ბოლო ${options.timeframe || 24} საათი</div>
+        <div class="text-sm font-medium">${token} Price Chart</div>
+        <div class="text-xs text-gray-400">Last ${options.timeframe || 24} hours</div>
         <div class="h-32 mt-2 flex items-end justify-between px-2 gap-1">
           ${chartData.map((point, i) => {
             const height = (point.y / Math.max(...chartData.map(p => p.y))) * 100;
@@ -311,8 +311,8 @@ const marketVisualizer = {
           }).join('')}
         </div>
         <div class="flex justify-between text-xs text-gray-400 mt-1">
-          <span>${new Date(chartData[0].x).toLocaleTimeString('ka-GE', {hour: '2-digit', minute:'2-digit'})}</span>
-          <span>${new Date(chartData[chartData.length-1].x).toLocaleTimeString('ka-GE', {hour: '2-digit', minute:'2-digit'})}</span>
+          <span>${new Date(chartData[0].x).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</span>
+          <span>${new Date(chartData[chartData.length-1].x).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</span>
         </div>
       </div>
     `;
@@ -323,32 +323,32 @@ const marketVisualizer = {
     if (!element || !analysisData || !analysisData[token]) return;
     
     const tokenData = analysisData[token];
-    const trendIcon = tokenData.trend > 0 ? '↗' : tokenData.trend < 0 ? '↘' : '→';
+    const trendIcon = tokenData.trend > 0 ? '↑' : tokenData.trend < 0 ? '↓' : '→';
     const trendClass = tokenData.trend > 0 ? 'price-up' : tokenData.trend < 0 ? 'price-down' : '';
     
     element.innerHTML = `
       <div class="glass p-3 rounded-lg">
-        <div class="text-sm font-medium mb-2">${token} ბაზრის ანალიზი</div>
+        <div class="text-sm font-medium mb-2">${token} Market Analysis</div>
         
         <div class="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <div class="text-gray-400">ცვალებადობა</div>
+            <div class="text-gray-400">Volatility</div>
             <div>${(tokenData.volatility * 100).toFixed(2)}%</div>
           </div>
           <div>
-            <div class="text-gray-400">მიმართულება</div>
-            <div class="${trendClass}">${trendIcon} ${tokenData.trend > 0 ? 'ზრდა' : tokenData.trend < 0 ? 'კლება' : 'სტაბილური'}</div>
+            <div class="text-gray-400">Trend</div>
+            <div class="${trendClass}">${trendIcon} ${tokenData.trend > 0 ? 'Bullish' : tokenData.trend < 0 ? 'Bearish' : 'Neutral'}</div>
           </div>
           <div>
-            <div class="text-gray-400">მხარდაჭერა</div>
+            <div class="text-gray-400">Support</div>
             <div>${tokenData.support.toFixed(2)}</div>
           </div>
           <div>
-            <div class="text-gray-400">წინააღმდეგობა</div>
+            <div class="text-gray-400">Resistance</div>
             <div>${tokenData.resistance.toFixed(2)}</div>
           </div>
           <div class="col-span-2">
-            <div class="text-gray-400">24სთ ვოლუმი</div>
+            <div class="text-gray-400">24h Volume</div>
             <div>$${(tokenData.volume24h / 1000000).toFixed(2)}M</div>
           </div>
         </div>
@@ -382,23 +382,23 @@ const performanceReporter = {
   templates: {
     executionStats: (data) => `
       <div class="report-section">
-        <h4 class="font-medium">შესრულების სტატისტიკა</h4>
+        <h4 class="font-medium">Execution Statistics</h4>
         <div class="glass p-3 rounded-lg my-2">
           <div class="grid grid-cols-2 gap-2 text-sm">
             <div>
-              <div class="text-gray-400 text-xs">ტრანზაქციები</div>
+              <div class="text-gray-400 text-xs">Transactions</div>
               <div>${data.transactionCount}</div>
             </div>
             <div>
-              <div class="text-gray-400 text-xs">წარმატების მაჩვენებელი</div>
+              <div class="text-gray-400 text-xs">Success Rate</div>
               <div>${data.successRate}%</div>
             </div>
             <div>
-              <div class="text-gray-400 text-xs">საშუალო შესრულების დრო</div>
-              <div>${data.avgExecutionTime} მწმ</div>
+              <div class="text-gray-400 text-xs">Average Execution Time</div>
+              <div>${data.avgExecutionTime} ms</div>
             </div>
             <div>
-              <div class="text-gray-400 text-xs">გაზის ხარჯი</div>
+              <div class="text-gray-400 text-xs">Gas Costs</div>
               <div>${data.gasCosts.toFixed(6)} SOL</div>
             </div>
           </div>
@@ -408,14 +408,14 @@ const performanceReporter = {
     
     profitabilityAnalysis: (data) => `
       <div class="report-section">
-        <h4 class="font-medium">მოგების ანალიზი</h4>
+        <h4 class="font-medium">Profitability Analysis</h4>
         <div class="glass p-3 rounded-lg my-2">
           <div class="flex justify-between items-center mb-2">
-            <div class="text-gray-400 text-xs">ჯამური მოგება</div>
+            <div class="text-gray-400 text-xs">Total Profit</div>
             <div class="price-up font-medium">$${data.profitUSD.toFixed(2)}</div>
           </div>
           
-          <div class="text-gray-400 text-xs mb-1">საათობრივი მოგების განაწილება</div>
+          <div class="text-gray-400 text-xs mb-1">Hourly Profit Distribution</div>
           <div class="h-16 flex items-end justify-between gap-1">
             ${data.hourlyProfits.map(profit => {
               const height = (profit / Math.max(...data.hourlyProfits)) * 100;
@@ -433,24 +433,24 @@ const performanceReporter = {
     
     systemPerformance: (data) => `
       <div class="report-section">
-        <h4 class="font-medium">სისტემის წარმადობა</h4>
+        <h4 class="font-medium">System Performance</h4>
         <div class="glass p-3 rounded-lg my-2">
           <div class="grid grid-cols-2 gap-2 text-sm">
             <div>
-              <div class="text-gray-400 text-xs">მუშაობის დრო</div>
-              <div>${Math.floor(data.uptime / 86400)} დღე ${Math.floor((data.uptime % 86400) / 3600)} სთ</div>
+              <div class="text-gray-400 text-xs">Uptime</div>
+              <div>${Math.floor(data.uptime / 86400)} days ${Math.floor((data.uptime % 86400) / 3600)} hours</div>
             </div>
             <div>
-              <div class="text-gray-400 text-xs">CPU გამოყენება</div>
-              <div>საშ. ${data.cpuUsage.average}% (პიკი ${data.cpuUsage.peak}%)</div>
+              <div class="text-gray-400 text-xs">CPU Usage</div>
+              <div>Avg ${data.cpuUsage.average}% (Peak ${data.cpuUsage.peak}%)</div>
             </div>
             <div>
-              <div class="text-gray-400 text-xs">მეხსიერების გამოყენება</div>
-              <div>საშ. ${data.memoryUsage.average}MB (პიკი ${data.memoryUsage.peak}MB)</div>
+              <div class="text-gray-400 text-xs">Memory Usage</div>
+              <div>Avg ${data.memoryUsage.average}MB (Peak ${data.memoryUsage.peak}MB)</div>
             </div>
             <div>
-              <div class="text-gray-400 text-xs">ლოგირების სისტემა</div>
-              <div>10MB როტაცია / 1კვ შენახვა</div>
+              <div class="text-gray-400 text-xs">Logging System</div>
+              <div>10MB rotation / 1KB storage</div>
             </div>
           </div>
         </div>
@@ -464,7 +464,7 @@ const performanceReporter = {
     
     element.innerHTML = `
       <div class="performance-report">
-        <div class="text-lg font-medium mb-4">Solana MEV Bot - შესრულების ანგარიში</div>
+        <div class="text-lg font-medium mb-4">Solana MEV Bot - Performance Report</div>
         
         ${this.templates.executionStats(this.data)}
         ${this.templates.profitabilityAnalysis(this.data)}

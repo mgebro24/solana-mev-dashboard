@@ -45,28 +45,58 @@ function initArbitrageUI() {
  * Register event listeners for arbitrage opportunities
  */
 function registerEventListeners() {
-  // Listen for arbitrage opportunities updates
+  // Listen for arbitrage opportunities updates (new format)
+  window.addEventListener('arbitrage-opportunities', (event) => {
+    const opportunities = event.detail;
+    
+    console.log('Received arbitrage opportunities event with:', {
+      simple: opportunities.simple?.length || 0,
+      triangular: opportunities.triangular?.length || 0,
+      complex: opportunities.complex?.length || 0
+    });
+    
+    // Update our UI state
+    uiState.opportunities = opportunities;
+    uiState.lastUpdate = Date.now();
+    
+    // Calculate total opportunities count
+    uiState.totalOpportunitiesCount = 
+      (opportunities.simple?.length || 0) + 
+      (opportunities.triangular?.length || 0) + 
+      (opportunities.complex?.length || 0);
+    
+    // Update UI
+    updateArbitrageCount(uiState.totalOpportunitiesCount);
+    renderArbitrageOpportunities();
+  });
+  
+  // Backward compatibility with old format
   window.addEventListener('arbitrage-opportunities-updated', (event) => {
     const data = event.detail;
     const opportunities = data.opportunities || [];
     
-    // ორგანიზება ტიპის მიხედვით 
+    console.log('Received arbitrage-opportunities-updated event with', opportunities.length, 'opportunities');
+    
+    // Organize by type
     const sortedOpportunities = {
       simple: opportunities.filter(opp => opp.type === 'simple'),
       triangular: opportunities.filter(opp => opp.type === 'triangular'),
       complex: opportunities.filter(opp => opp.type === 'complex')
     };
     
-    // Update our UI state
-    uiState.opportunities = sortedOpportunities;
-    uiState.lastUpdate = data.timestamp || Date.now();
-    
-    // Calculate total opportunities count
-    uiState.totalOpportunitiesCount = opportunities.length;
-    
-    // Update UI
-    updateArbitrageCount(uiState.totalOpportunitiesCount);
-    renderArbitrageOpportunities();
+    // If we didn't get opportunities from the new format event, use these
+    if (uiState.lastUpdate < data.timestamp || Date.now() - uiState.lastUpdate > 5000) {
+      // Update our UI state
+      uiState.opportunities = sortedOpportunities;
+      uiState.lastUpdate = data.timestamp || Date.now();
+      
+      // Calculate total opportunities count
+      uiState.totalOpportunitiesCount = opportunities.length;
+      
+      // Update UI
+      updateArbitrageCount(uiState.totalOpportunitiesCount);
+      renderArbitrageOpportunities();
+    }
   });
   
   // Listen for wallet balance updates
@@ -126,47 +156,76 @@ function updateWalletBalanceUI(balance) {
  * Render arbitrage opportunities in the UI
  */
 function renderArbitrageOpportunities() {
-  if (!domElements.opportunitiesContainer || !domElements.opportunityTemplate) return;
+  if (!domElements.opportunitiesContainer) {
+    console.warn('Opportunities container element not found');
+    return;
+  }
+  
+  if (!domElements.opportunityTemplate) {
+    console.warn('Opportunity template element not found');
+    return;
+  }
   
   // Hide loading indicator
   if (domElements.opportunitiesLoading) {
-    domElements.opportunitiesLoading.style.display = 'none';
+    domElements.opportunitiesLoading.classList.add('hidden');
   }
   
   // Clear existing opportunities
   domElements.opportunitiesContainer.innerHTML = '';
   
-  // Create a document fragment to reduce reflows
-  const fragment = document.createDocumentFragment();
+  // Count of rendered opportunities
+  let renderedCount = 0;
+  const maxToRender = 6; // Limit to prevent overwhelming the UI
   
-  // First add triangular opportunities (usually most profitable)
-  uiState.opportunities.triangular.slice(0, 5).forEach(opp => {
-    const element = createOpportunityElement(opp, 'triangular');
-    fragment.appendChild(element);
-  });
+  // Helper to add opportunities of a specific type
+  const addOpportunitiesOfType = (opportunities, type, maxCount) => {
+    if (!opportunities || opportunities.length === 0) return 0;
+    
+    let count = 0;
+    const sortedOpps = [...opportunities].sort((a, b) => {
+      // Sort by profit percentage descending
+      return parseFloat(b.profitPercent) - parseFloat(a.profitPercent);
+    });
+    
+    for (const opp of sortedOpps) {
+      if (count >= maxCount) break;
+      
+      const element = createOpportunityElement(opp, type);
+      if (element) {
+        domElements.opportunitiesContainer.appendChild(element);
+        count++;
+      }
+    }
+    
+    return count;
+  };
   
-  // Then add simple opportunities
-  uiState.opportunities.simple.slice(0, 3).forEach(opp => {
-    const element = createOpportunityElement(opp, 'simple');
-    fragment.appendChild(element);
-  });
+  // Render opportunities in order of complexity (simple first, complex last)
+  const types = ['simple', 'triangular', 'complex'];
   
-  // Finally add complex opportunities
-  uiState.opportunities.complex.slice(0, 2).forEach(opp => {
-    const element = createOpportunityElement(opp, 'complex');
-    fragment.appendChild(element);
-  });
-  
-  // Display message if no opportunities
-  if (fragment.children.length === 0) {
-    const emptyMessage = document.createElement('div');
-    emptyMessage.className = 'text-center py-6 text-gray-400';
-    emptyMessage.innerHTML = 'ამჟამად არბიტრაჟის შესაძლებლობები არ მოიძებნა.<br>ცდილობთ მოძებნას...';
-    fragment.appendChild(emptyMessage);
+  for (const type of types) {
+    const opps = uiState.opportunities[type] || [];
+    const remaining = maxToRender - renderedCount;
+    
+    if (remaining <= 0) break;
+    
+    const typeMaxCount = type === 'simple' ? 2 : type === 'triangular' ? 3 : 1;
+    const countToRender = Math.min(remaining, typeMaxCount);
+    
+    renderedCount += addOpportunitiesOfType(opps, type, countToRender);
   }
   
-  // Add to container
-  domElements.opportunitiesContainer.appendChild(fragment);
+  // If no opportunities were rendered, show a message
+  if (renderedCount === 0) {
+    domElements.opportunitiesContainer.innerHTML = `
+      <div class="text-center py-8 text-gray-400">
+        <div class="text-3xl mb-2"><i class="fas fa-search"></i></div>
+        <div>No arbitrage opportunities found</div>
+        <div class="text-sm mt-2">Searching for profitable trading opportunities...</div>
+      </div>
+    `;
+  }
   
   // Add event listeners to execute buttons
   addExecuteButtonListeners();
@@ -179,67 +238,117 @@ function renderArbitrageOpportunities() {
  * @returns {HTMLElement} - The created opportunity element
  */
 function createOpportunityElement(opportunity, type) {
+  if (!domElements.opportunityTemplate) return null;
+  
   // Clone the template
-  const template = domElements.opportunityTemplate.content.cloneNode(true);
-  const item = template.querySelector('.opportunity-item');
+  const template = domElements.opportunityTemplate.cloneNode(true);
+  template.removeAttribute('id');
+  template.classList.remove('hidden');
   
-  // Add data attributes for filtering
-  item.dataset.opportunityType = type;
-  item.dataset.opportunityId = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  // Common properties to set
+  const opportunityId = opportunity.id || `opp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const profitPercent = parseFloat(opportunity.profitPercent).toFixed(2);
+  const estimatedProfit = parseFloat(opportunity.estimatedProfit || 0).toFixed(4);
   
-  // Find elements to update
-  const routeElement = item.querySelector('.opportunity-route');
-  const dexesElement = item.querySelector('.opportunity-dexes');
-  const profitElement = item.querySelector('.opportunity-profit');
-  const valueElement = item.querySelector('.opportunity-value');
-  const executeButton = item.querySelector('.opportunity-execute');
-  
-  // Set opportunity data based on type
-  if (type === 'simple') {
-    routeElement.textContent = `${opportunity.tokenIn} → ${opportunity.tokenOut}`;
-    dexesElement.textContent = `${opportunity.dexBuy} → ${opportunity.dexSell}`;
-    executeButton.dataset.opportunityData = JSON.stringify(opportunity);
-  } else if (type === 'triangular') {
-    const route = opportunity.route.map(hop => hop.from).join(' → ') + 
-                  ` → ${opportunity.route[opportunity.route.length - 1].to}`;
-    routeElement.textContent = route;
+  // Set opportunity type badge
+  const typeBadge = template.querySelector('.opportunity-type');
+  if (typeBadge) {
+    const typeLabels = {
+      'simple': 'Simple',
+      'triangular': 'Triangular',
+      'complex': 'Complex'
+    };
     
-    const dexes = opportunity.route.map(hop => hop.dex).join(', ');
-    dexesElement.textContent = dexes;
-    executeButton.dataset.opportunityData = JSON.stringify(opportunity);
-  } else if (type === 'complex') {
-    const routeTokens = opportunity.path.map(hop => hop.from);
-    routeTokens.push(opportunity.path[opportunity.path.length - 1].to);
+    typeBadge.textContent = typeLabels[type] || type;
     
-    // For complex routes, we might want to truncate if too long
-    let routeText = routeTokens.join(' → ');
-    if (routeText.length > 40) {
-      routeText = routeTokens.slice(0, 2).join(' → ') + 
-                  ` → ... → ${routeTokens[routeTokens.length - 1]}`;
+    // Add specific class based on type
+    if (type === 'simple') {
+      typeBadge.classList.add('bg-blue-900/30', 'text-blue-400', 'border-blue-500/50');
+    } else if (type === 'triangular') {
+      typeBadge.classList.add('bg-purple-900/30', 'text-purple-400', 'border-purple-500/50');
+    } else if (type === 'complex') {
+      typeBadge.classList.add('bg-red-900/30', 'text-red-400', 'border-red-500/50');
     }
+  }
+  
+  // Set profit percentage
+  const profitElement = template.querySelector('.opportunity-profit');
+  if (profitElement) {
+    profitElement.textContent = `+${profitPercent}%`;
     
-    routeElement.textContent = routeText;
-    
-    // Show DEXes used (might be long, so we'll truncate)
-    const dexes = opportunity.path.map(hop => hop.dex);
-    const uniqueDexes = [...new Set(dexes)]; // Remove duplicates
-    dexesElement.textContent = uniqueDexes.join(', ');
+    // Style based on profit amount
+    if (parseFloat(profitPercent) > 2) {
+      profitElement.classList.add('text-green-400');
+    } else if (parseFloat(profitPercent) > 1) {
+      profitElement.classList.add('text-green-300');
+    } else {
+      profitElement.classList.add('text-green-200');
+    }
+  }
+  
+  // Set opportunity details based on type
+  const detailsElement = template.querySelector('.opportunity-details');
+  if (detailsElement) {
+    if (type === 'simple') {
+      detailsElement.innerHTML = `
+        <div class="flex justify-between mb-1 text-xs">
+          <span>Current: ${opportunity.fromToken || 'SOL'} → ${opportunity.toToken || 'USDC'}</span>
+          <span class="text-gray-400">$${estimatedProfit} profit</span>
+        </div>
+        <div class="flex justify-between text-xs text-gray-400">
+          <span>Buy: ${opportunity.buyDex || 'Jupiter'} @ ${opportunity.buyPrice || '?'}</span>
+          <span>Sell: ${opportunity.sellDex || 'Raydium'} @ ${opportunity.sellPrice || '?'}</span>
+        </div>
+      `;
+    } else if (type === 'triangular') {
+      const route = opportunity.route || [];
+      const routeText = route.map(step => 
+        `${step.from}→${step.to} (${step.dex})`
+      ).join(' → ');
+      
+      detailsElement.innerHTML = `
+        <div class="flex justify-between mb-1 text-xs">
+          <span>Base: ${opportunity.baseToken || route[0]?.from || 'USDC'}</span>
+          <span class="text-gray-400">$${estimatedProfit} profit</span>
+        </div>
+        <div class="text-xs text-gray-400 truncate">
+          <span title="${routeText}">${routeText}</span>
+        </div>
+      `;
+    } else if (type === 'complex') {
+      const path = opportunity.path || [];
+      const routeText = path.length > 0 
+        ? `${path.length} step chain: ${path[0]?.from || '?'} → ... → ${path[path.length-1]?.to || '?'}`
+        : 'Complex arbitrage chain';
+      
+      detailsElement.innerHTML = `
+        <div class="flex justify-between mb-1 text-xs">
+          <span>Complex</span>
+          <span class="text-gray-400">$${estimatedProfit} profit</span>
+        </div>
+        <div class="text-xs text-gray-400">
+          ${routeText}
+        </div>
+      `;
+    }
+  }
+  
+  // Set execute button data
+  const executeButton = template.querySelector('.execute-opportunity');
+  if (executeButton) {
+    executeButton.dataset.opportunityId = opportunityId;
+    executeButton.dataset.opportunityType = type;
     executeButton.dataset.opportunityData = JSON.stringify(opportunity);
   }
   
-  // Common data
-  profitElement.textContent = `+${opportunity.profitPercent}%`;
-  valueElement.textContent = `${opportunity.estimatedProfit} SOL`;
-  executeButton.dataset.opportunityType = type;
-  
-  return item;
+  return template;
 }
 
 /**
  * Add event listeners to execute buttons
  */
 function addExecuteButtonListeners() {
-  const executeButtons = document.querySelectorAll('.opportunity-execute');
+  const executeButtons = document.querySelectorAll('.execute-opportunity');
   
   executeButtons.forEach(button => {
     button.addEventListener('click', async () => {
@@ -264,7 +373,7 @@ function addExecuteButtonListeners() {
         
         // Check result
         if (result && result.success) {
-          showNotification(`არბიტრაჟი წარმატებით შესრულდა! (${opportunityData.profitPercent}% მოგებით)`, 'success');
+          showNotification(`Arbitrage executed successfully! (${opportunityData.profitPercent}% profit)`, 'success');
           
           // Disable the button permanently and update text
           button.textContent = 'Executed ✓';
@@ -272,8 +381,8 @@ function addExecuteButtonListeners() {
           button.classList.add('bg-green-900/30', 'text-green-400', 'border-green-500/50');
           button.classList.remove('bg-purple-900/30');
         } else {
-          const errorMessage = result && result.error ? result.error : 'უცნობი შეცდომა';
-          showNotification(`არბიტრაჟის შესრულება ვერ მოხერხდა: ${errorMessage}`, 'error');
+          const errorMessage = result && result.error ? result.error : 'Unknown error';
+          showNotification(`Failed to execute arbitrage: ${errorMessage}`, 'error');
           
           // Re-enable button
           button.textContent = 'Retry';
@@ -281,7 +390,7 @@ function addExecuteButtonListeners() {
         }
       } catch (error) {
         console.error('Error executing opportunity:', error);
-        showNotification(`შეცდომა: ${error.message}`, 'error');
+        showNotification(`Error: ${error.message}`, 'error');
         
         // Re-enable button
         button.textContent = 'Retry';

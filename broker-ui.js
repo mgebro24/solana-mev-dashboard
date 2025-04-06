@@ -1,30 +1,30 @@
 /**
- * Broker UI - მოდული საბროკეროების ინტერფეისისთვის Solana MEV Dashboard-ზე
- * აკავშირებს brokers.js მოდულს დაშბორდის ვიზუალურ ელემენტებთან
+ * Broker UI - Module for Solana MEV Dashboard broker interface
+ * Connects brokers.js module to dashboard visual elements
  */
 
-// DOM ელემენტების კეში
+// DOM element cache
 const brokerUI = {
-  // DOM ელემენტების მისამართები
+  // DOM element references
   elements: {
-    // სელექტები
+    // Selects
     tokenPairSelect: document.getElementById('broker-token-pair'),
     
-    // ყიდვის მხარე
+    // Buy side
     bestBuyDexEl: document.getElementById('best-buy-dex'),
     bestBuyPriceEl: document.getElementById('best-buy-price'),
     bestBuyFeeEl: document.getElementById('best-buy-fee'),
     bestBuyGasEl: document.getElementById('best-buy-gas'),
     bestBuyMinEl: document.getElementById('best-buy-min'),
     
-    // გაყიდვის მხარე
+    // Sell side
     bestSellDexEl: document.getElementById('best-sell-dex'),
     bestSellPriceEl: document.getElementById('best-sell-price'),
     bestSellFeeEl: document.getElementById('best-sell-fee'),
     bestSellGasEl: document.getElementById('best-sell-gas'),
     bestSellMinEl: document.getElementById('best-sell-min'),
     
-    // არბიტრაჟის პანელი
+    // Arbitrage panel
     arbProfitPercentEl: document.getElementById('arb-profit-percent'),
     arbBuyDexEl: document.getElementById('arb-buy-dex'),
     arbSellDexEl: document.getElementById('arb-sell-dex'),
@@ -32,29 +32,29 @@ const brokerUI = {
     arbNetProfitEl: document.getElementById('arb-net-profit'),
     executeArbButton: document.getElementById('execute-arbitrage'),
     
-    // გაზის სტატუსის პანელი
+    // Gas status panel
     gasStatusEl: document.getElementById('gas-status'),
     avgSavingsEl: document.getElementById('avg-savings'),
     lastUpdateEl: document.getElementById('broker-last-update')
   },
   
-  // მიმდინარე სელექტირებული წყვილი
+  // Currently selected pair
   currentPair: 'SOL_USDC',
   
-  // კეშირებული ინფორმაცია
+  // Cached data
   cache: {
     recommendations: {},
     lastUpdate: 0
   },
   
-  // ინტერფეისის ინიციალიზაცია
+  // Initialize interface
   initialize() {
     console.log('Initializing broker UI module...');
     
-    // ელემენტების რეფერენსების ინიციალიზაცია
+    // Initialize element references
     this.cacheElements();
     
-    // მოვუსმინოთ წყვილის ცვლილებას
+    // Listen for pair change
     if (this.elements.tokenPairSelect) {
       this.elements.tokenPairSelect.addEventListener('change', () => {
         this.currentPair = this.elements.tokenPairSelect.value;
@@ -62,32 +62,32 @@ const brokerUI = {
       });
     }
     
-    // მოვუსმინოთ არბიტრაჟის ღილაკს
+    // Listen for arbitrage button click
     if (this.elements.executeArbButton) {
       this.elements.executeArbButton.addEventListener('click', () => {
         this.executeArbitrage();
       });
     }
     
-    // მოვუსმინოთ ახალი არბიტრაჟის შესაძლებლობის მოვლენას
+    // Listen for new arbitrage opportunity event
     window.addEventListener('broker-arbitrage-opportunity', (event) => {
       if (event.detail) {
-        // განვაახლოთ ინტერფეისი, თუ ეს შესაძლებლობა არის ჩვენთვის საინტერესო წყვილისთვის
+        // Update interface if this opportunity is for the current pair
         if (event.detail.pair === this.currentPair) {
           this.highlightOpportunity(event.detail);
         }
         
-        // შეტყობინების ჩვენება მნიშვნელოვანი შესაძლებლობისთვის
+        // Show notification for significant opportunity
         if (parseFloat(event.detail.profitPercent) > 1.0) {
-          this.showNotification(`${event.detail.baseToken}/${event.detail.quoteToken} - ${event.detail.profitPercent}% მოგება`);
+          this.showNotification(`${event.detail.baseToken}/${event.detail.quoteToken} - ${event.detail.profitPercent}% profit`);
         }
       }
     });
     
-    // საწყისი განახლება
+    // Initial update
     this.updateBrokerUI(this.currentPair);
     
-    // პერიოდული განახლება ყოველ 30 წამში
+    // Periodic update every 30 seconds
     setInterval(() => {
       this.updateBrokerUI(this.currentPair);
     }, 30 * 1000);
@@ -95,27 +95,27 @@ const brokerUI = {
     return true;
   },
   
-  // DOM ელემენტების ხელახლა შენახვა
+  // Re-cache DOM elements
   cacheElements() {
     this.elements = {
-      // სელექტები
+      // Selects
       tokenPairSelect: document.getElementById('broker-token-pair'),
       
-      // ყიდვის მხარე
+      // Buy side
       bestBuyDexEl: document.getElementById('best-buy-dex'),
       bestBuyPriceEl: document.getElementById('best-buy-price'),
       bestBuyFeeEl: document.getElementById('best-buy-fee'),
       bestBuyGasEl: document.getElementById('best-buy-gas'),
       bestBuyMinEl: document.getElementById('best-buy-min'),
       
-      // გაყიდვის მხარე
+      // Sell side
       bestSellDexEl: document.getElementById('best-sell-dex'),
       bestSellPriceEl: document.getElementById('best-sell-price'),
       bestSellFeeEl: document.getElementById('best-sell-fee'),
       bestSellGasEl: document.getElementById('best-sell-gas'),
       bestSellMinEl: document.getElementById('best-sell-min'),
       
-      // არბიტრაჟის პანელი
+      // Arbitrage panel
       arbProfitPercentEl: document.getElementById('arb-profit-percent'),
       arbBuyDexEl: document.getElementById('arb-buy-dex'),
       arbSellDexEl: document.getElementById('arb-sell-dex'),
@@ -123,31 +123,31 @@ const brokerUI = {
       arbNetProfitEl: document.getElementById('arb-net-profit'),
       executeArbButton: document.getElementById('execute-arbitrage'),
       
-      // გაზის სტატუსის პანელი
+      // Gas status panel
       gasStatusEl: document.getElementById('gas-status'),
       avgSavingsEl: document.getElementById('avg-savings'),
       lastUpdateEl: document.getElementById('broker-last-update')
     };
   },
   
-  // ინტერფეისის განახლება კონკრეტული წყვილისთვის
+  // Update interface for specific pair
   updateBrokerUI(pairKey) {
     console.log(`Updating broker UI for ${pairKey}...`);
     
-    // შევამოწმოთ, თუ ბროკერების სერვისი ხელმისაწვდომია
+    // Check if brokers service is available
     if (!window.brokerService) {
       console.warn('Broker service not available yet');
       setTimeout(() => this.updateBrokerUI(pairKey), 1000);
       return;
     }
     
-    // კეშირება და წყვილების დავალიდურება
+    // Cache and split pair
     const [baseToken, quoteToken] = pairKey.split('_');
     
-    // გავანახლოთ გაზის მდგომარეობა
+    // Update gas status
     this.updateGasStatus();
     
-    // მივიღოთ საუკეთესო რეკომენდაციები ამ წყვილისთვის
+    // Get best recommendations for this pair
     const recommendation = window.brokerService.getBestDexRecommendation(baseToken, quoteToken);
     
     if (!recommendation) {
@@ -155,22 +155,22 @@ const brokerUI = {
       return;
     }
     
-    // კეშირება
+    // Cache
     this.cache.recommendations[pairKey] = recommendation;
     this.cache.lastUpdate = Date.now();
     
-    // განვაახლოთ ინტერფეისი ახალი მონაცემებით
+    // Update interface with new data
     this.renderRecommendation(recommendation);
     
-    // განვაახლოთ ბოლო განახლების დრო
+    // Update last update time
     this.updateLastUpdateTime();
     
     return recommendation;
   },
   
-  // საუკეთესო საბროკეროების რეკომენდაციების ჩვენება ინტერფეისზე
+  // Render best brokers recommendations on interface
   renderRecommendation(recommendation) {
-    // ყიდვის მხარე
+    // Buy side
     if (this.elements.bestBuyDexEl) {
       this.elements.bestBuyDexEl.textContent = recommendation.bestBuy.dex;
     }
@@ -193,7 +193,7 @@ const brokerUI = {
       this.elements.bestBuyMinEl.textContent = `0.01 ${baseToken}`;
     }
     
-    // გაყიდვის მხარე
+    // Sell side
     if (this.elements.bestSellDexEl) {
       this.elements.bestSellDexEl.textContent = recommendation.bestSell.dex;
     }
@@ -216,12 +216,12 @@ const brokerUI = {
       this.elements.bestSellMinEl.textContent = `0.1 ${baseToken}`;
     }
     
-    // საშუალო დანაზოგი
+    // Average savings
     if (this.elements.avgSavingsEl) {
       this.elements.avgSavingsEl.textContent = recommendation.averageSavings;
     }
     
-    // არბიტრაჟის პანელი
+    // Arbitrage panel
     if (recommendation.bestArbitrage) {
       this.renderArbitragePanel(recommendation);
     } else {
@@ -229,13 +229,13 @@ const brokerUI = {
     }
   },
   
-  // არბიტრაჟის პანელის ჩვენება
+  // Render arbitrage panel
   renderArbitragePanel(recommendation) {
     const arb = recommendation.bestArbitrage;
     
     if (!arb) return;
     
-    // აქტიური არბიტრაჟის ინფორმაცია
+    // Active arbitrage information
     if (this.elements.arbProfitPercentEl) {
       this.elements.arbProfitPercentEl.textContent = `+${arb.profitPercent}`;
     }
@@ -257,29 +257,29 @@ const brokerUI = {
       this.elements.arbNetProfitEl.textContent = arb.profitPercent;
     }
     
-    // გამოვაჩინოთ პანელი
+    // Show panel
     const panel = document.getElementById('arbitrage-opportunity-panel');
     if (panel) {
       panel.style.display = 'block';
     }
     
-    // განვაახლოთ ღილაკის მდგომარეობა
+    // Update button state
     if (this.elements.executeArbButton) {
       const profitPercent = parseFloat(arb.profitPercent);
       
       if (profitPercent < 0.5) {
         this.elements.executeArbButton.disabled = true;
         this.elements.executeArbButton.classList.add('opacity-50');
-        this.elements.executeArbButton.textContent = 'მოგება ძალიან დაბალია';
+        this.elements.executeArbButton.textContent = 'Profit too low';
       } else {
         this.elements.executeArbButton.disabled = false;
         this.elements.executeArbButton.classList.remove('opacity-50');
-        this.elements.executeArbButton.textContent = 'შესრულება';
+        this.elements.executeArbButton.textContent = 'Execute';
       }
     }
   },
   
-  // არბიტრაჟის პანელის დამალვა
+  // Hide arbitrage panel
   hideArbitragePanel() {
     const panel = document.getElementById('arbitrage-opportunity-panel');
     if (panel) {
@@ -287,7 +287,7 @@ const brokerUI = {
     }
   },
   
-  // გაზის მდგომარეობის განახლება
+  // Update gas status
   updateGasStatus() {
     if (!window.brokerService || !window.brokerService.gasOptimization) {
       return;
@@ -295,34 +295,34 @@ const brokerUI = {
     
     const gasStatus = window.brokerService.gasOptimization;
     
-    // განვსაზღვროთ ფერი და ტექსტი
+    // Determine color and text
     let gasStatusText, gasStatusColor;
     
     switch(gasStatus.congestionLevel) {
       case 'low':
-        gasStatusText = 'დაბალი';
+        gasStatusText = 'Low';
         gasStatusColor = 'text-green-400';
         break;
       case 'high':
-        gasStatusText = 'მაღალი - მომატებულია';
+        gasStatusText = 'High - increased';
         gasStatusColor = 'text-red-400';
         break;
       default:
-        gasStatusText = 'ნორმალური';
+        gasStatusText = 'Normal';
         gasStatusColor = 'text-blue-400';
     }
     
-    // განვაახლოთ გაზის მდგომარეობის ელემენტი
+    // Update gas status element
     if (this.elements.gasStatusEl) {
       this.elements.gasStatusEl.textContent = gasStatusText;
       
-      // წავშალოთ ძველი კლასები და დავამატოთ ახალი
+      // Remove old classes and add new
       this.elements.gasStatusEl.className = 'text-sm font-medium';
       this.elements.gasStatusEl.classList.add(gasStatusColor);
     }
   },
   
-  // ბოლო განახლების დროის განახლება
+  // Update last update time
   updateLastUpdateTime() {
     if (!this.elements.lastUpdateEl) return;
     
@@ -333,41 +333,41 @@ const brokerUI = {
     let timeText;
     
     if (diffSeconds < 5) {
-      timeText = 'ახლახანს';
+      timeText = 'Just now';
     } else if (diffSeconds < 60) {
-      timeText = `${diffSeconds} წმ წინ`;
+      timeText = `${diffSeconds} seconds ago`;
     } else {
       const diffMinutes = Math.floor(diffSeconds / 60);
-      timeText = `${diffMinutes} წთ წინ`;
+      timeText = `${diffMinutes} minutes ago`;
     }
     
     this.elements.lastUpdateEl.textContent = timeText;
   },
   
-  // არბიტრაჟის შესრულება
+  // Execute arbitrage
   executeArbitrage() {
     console.log('Executing arbitrage opportunity...');
     
-    // მივიღოთ მიმდინარე წყვილის რეკომენდაცია
+    // Get current pair recommendation
     const recommendation = this.cache.recommendations[this.currentPair];
     
     if (!recommendation || !recommendation.bestArbitrage) {
       console.warn('No valid arbitrage opportunity available');
-      this.showNotification('არ არსებობს აქტიური არბიტრაჟის შესაძლებლობა', 'error');
+      this.showNotification('No active arbitrage opportunity available', 'error');
       return;
     }
     
     const arb = recommendation.bestArbitrage;
     const [baseToken, quoteToken] = this.currentPair.split('_');
     
-    // არბიტრაჟის შესრულების სიმულაცია
-    this.showNotification('არბიტრაჟის შესრულება...', 'info');
+    // Simulate arbitrage execution
+    this.showNotification('Executing arbitrage...', 'info');
     
-    // თუ ტრანზაქციების ძრავა არსებობს, გამოვიყენოთ ის
+    // If transactions engine exists, use it
     if (window.transactionsEngine) {
-      // მინიმალური თანხის გამოთვლა
+      // Calculate minimum amount
       const minAmount = parseFloat(arb.minAmount);
-      // დავამრგვალოთ მინიმალურ თანხას დამატებული ბუფერი
+      // Round minimum amount with added buffer
       const amount = Math.ceil(minAmount * 1.2 * 100) / 100;
       
       const opportunity = {
@@ -383,70 +383,70 @@ const brokerUI = {
         timestamp: Date.now()
       };
       
-      // შევასრულოთ ტრანზაქცია
+      // Execute transaction
       window.transactionsEngine.executeOpportunity(opportunity)
         .then(result => {
           if (result.success) {
-            this.showNotification(`არბიტრაჟი წარმატებით შესრულდა! მოგება: ${result.profit} ${baseToken}`, 'success');
+            this.showNotification(`Arbitrage executed successfully! Profit: ${result.profit} ${baseToken}`, 'success');
             
-            // განვაახლოთ ინტერფეისი გარკვეული დაყოვნების შემდეგ
+            // Update interface after a short delay
             setTimeout(() => {
               this.updateBrokerUI(this.currentPair);
             }, 2000);
           } else {
-            this.showNotification(`შეცდომა შესრულებისას: ${result.error}`, 'error');
+            this.showNotification(`Error executing arbitrage: ${result.error}`, 'error');
           }
         })
         .catch(error => {
           console.error('Error executing arbitrage:', error);
-          this.showNotification('შეცდომა არბიტრაჟის შესრულებისას', 'error');
+          this.showNotification('Error executing arbitrage', 'error');
         });
     } else {
-      // სიმულირებული შესრულება, თუ ტრანზაქციების ძრავა არ არსებობს
+      // Simulated execution if transactions engine does not exist
       setTimeout(() => {
-        const success = Math.random() > 0.2; // 80% წარმატების შანსი
+        const success = Math.random() > 0.2; // 80% success chance
         
         if (success) {
           const profit = (parseFloat(arb.profitPercent) * 10).toFixed(3);
-          this.showNotification(`არბიტრაჟი წარმატებით შესრულდა! მოგება: ${profit} ${baseToken}`, 'success');
+          this.showNotification(`Arbitrage executed successfully! Profit: ${profit} ${baseToken}`, 'success');
         } else {
-          this.showNotification('შეცდომა არბიტრაჟის შესრულებისას: ბაზრის პირობები შეიცვალა', 'error');
+          this.showNotification('Error executing arbitrage: market conditions changed', 'error');
         }
         
-        // განვაახლოთ ინტერფეისი
+        // Update interface
         this.updateBrokerUI(this.currentPair);
       }, 1500);
     }
   },
   
-  // მნიშვნელოვანი არბიტრაჟის შესაძლებლობების ხაზგასმა
+  // Highlight significant arbitrage opportunities
   highlightOpportunity(opportunity) {
     console.log('Highlighting new opportunity:', opportunity);
     
-    // თუ პანელი არ ჩანს, გამოვაჩინოთ
+    // If panel is not visible, show it
     const panel = document.getElementById('arbitrage-opportunity-panel');
     if (panel) {
       panel.style.display = 'block';
     }
     
-    // ვიზუალური ეფექტი ახალი შესაძლებლობისთვის
+    // Visual effect for new opportunity
     panel.classList.add('animate-pulse');
     
-    // გარკვეული დროის შემდეგ ეფექტის მოხსნა
+    // Remove effect after a short delay
     setTimeout(() => {
       panel.classList.remove('animate-pulse');
     }, 2000);
     
-    // რეკომენდაციების განახლება
+    // Update recommendations
     const [baseToken, quoteToken] = opportunity.pair.split('_');
     this.updateBrokerUI(opportunity.pair);
   },
   
-  // შეტყობინების ჩვენება
+  // Show notification
   showNotification(message, type = 'info') {
     console.log(`Notification (${type}): ${message}`);
     
-    // ფერის გამოთვლა ტიპის მიხედვით
+    // Determine color based on type
     let bgColor, textColor;
     
     switch(type) {
@@ -467,7 +467,7 @@ const brokerUI = {
         textColor = 'text-white';
     }
     
-    // შეტყობინების ელემენტის შექმნა
+    // Create notification element
     const notification = document.createElement('div');
     notification.className = `fixed top-4 right-4 ${bgColor} ${textColor} px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-500 transform translate-x-full opacity-0`;
     notification.innerHTML = `
@@ -477,19 +477,19 @@ const brokerUI = {
       </div>
     `;
     
-    // შეტყობინების დამატება დოკუმენტში
+    // Add notification to document
     document.body.appendChild(notification);
     
-    // ანიმაციის დამატება
+    // Add animation
     setTimeout(() => {
       notification.classList.remove('translate-x-full', 'opacity-0');
     }, 10);
     
-    // შეტყობინების გაქრობა გარკვეული დროის შემდეგ
+    // Remove notification after a short delay
     setTimeout(() => {
       notification.classList.add('translate-x-full', 'opacity-0');
       
-      // ელემენტის წაშლა ანიმაციის დასრულების შემდეგ
+      // Remove element after animation
       setTimeout(() => {
         document.body.removeChild(notification);
       }, 500);
@@ -497,13 +497,13 @@ const brokerUI = {
   }
 };
 
-// მოდულის ინიციალიზაცია გვერდის ჩატვირთვისას
+// Initialize module on page load
 document.addEventListener('DOMContentLoaded', function() {
-  // გვერდის ჩატვირთვის 1.5 წამის შემდეგ ინიციალიზაცია brokers.js-ის დასრულების შემდეგ
+  // Initialize module 1.5 seconds after page load, after brokers.js has finished
   setTimeout(() => {
     brokerUI.initialize();
     
-    // მოდულის მიბმა გლობალურ ობიექტზე
+    // Attach module to global object
     window.brokerUI = brokerUI;
     
     console.log('Broker UI module initialized');

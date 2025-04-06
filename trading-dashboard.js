@@ -161,7 +161,7 @@ function setupEventListeners() {
  */
 function startTrading() {
   if (!window.solanaServices.wallet.connected && tradingConfig.network === 'mainnet') {
-    showNotification('გთხოვთ, დააკავშიროთ Phantom საფულე მეინქსელზე სავაჭროდ', 'error');
+    showNotification('Please connect your Phantom wallet to trade on mainnet', 'error');
     return;
   }
   
@@ -176,7 +176,7 @@ function startTrading() {
   
   // Show notification
   showNotification(
-    `დაიწყო ავტომატური ვაჭრობა: $${tradingConfig.amount} ${tradingConfig.network === 'testnet' ? 'ტესტნეტზე' : 'მეინქსელზე'}`,
+    `Started automated trading: $${tradingConfig.amount} on ${tradingConfig.network === 'testnet' ? 'testnet' : 'mainnet'}`,
     'success'
   );
   
@@ -196,7 +196,7 @@ function stopTrading() {
   updateTradingUI();
   
   // Show notification
-  showNotification('ავტომატური ვაჭრობა შეჩერებულია', 'info');
+  showNotification('Automated trading stopped', 'info');
   
   // Save trade history
   saveTradeHistory();
@@ -270,12 +270,12 @@ function executeTrade(opportunity) {
     // Show notification
     if (success) {
       showNotification(
-        `ვაჭრობა #${tradingConfig.tradesMade}: მოგება $${tradeRecord.actualProfit.toFixed(2)} (${tradeRecord.actualProfitPercent.toFixed(2)}%)`,
+        `Trade #${tradingConfig.tradesMade}: Profit $${tradeRecord.actualProfit.toFixed(2)} (${tradeRecord.actualProfitPercent.toFixed(2)}%)`,
         'success'
       );
     } else {
       showNotification(
-        `ვაჭრობა #${tradingConfig.tradesMade} წარუმატებელია: ${tradeRecord.failReason}`,
+        `Trade #${tradingConfig.tradesMade} failed: ${tradeRecord.failReason}`,
         'error'
       );
     }
@@ -284,7 +284,7 @@ function executeTrade(opportunity) {
     
   } catch (error) {
     console.error('Error executing trade:', error);
-    showNotification(`ვაჭრობის შეცდომა: ${error.message}`, 'error');
+    showNotification(`Error executing trade: ${error.message}`, 'error');
     return null;
   }
 }
@@ -329,7 +329,7 @@ function updateTradingUI() {
   
   // Update status indicator
   if (dom.tradingStatus) {
-    dom.tradingStatus.textContent = tradingConfig.active ? 'აქტიური' : 'გაჩერებული';
+    dom.tradingStatus.textContent = tradingConfig.active ? 'Active' : 'Stopped';
     dom.tradingStatus.className = tradingConfig.active ? 'status-active' : 'status-inactive';
   }
   
@@ -356,10 +356,10 @@ function updateTradeHistoryUI() {
   
   const currentNetworkHistory = tradeHistory[tradingConfig.network];
   
-  let html = '<div class="text-sm text-gray-400 mb-2">ბოლო ტრანზაქციები:</div>';
+  let html = '<div class="text-sm text-gray-400 mb-2">Recent trades:</div>';
   
   if (currentNetworkHistory.length === 0) {
-    html += '<div class="text-center text-gray-500 py-4">ჯერ არ არის ტრანზაქციები</div>';
+    html += '<div class="text-center text-gray-500 py-4">No trades yet</div>';
   } else {
     html += '<div class="space-y-2 max-h-60 overflow-y-auto">';
     
@@ -368,7 +368,7 @@ function updateTradeHistoryUI() {
       const statusClass = trade.status === 'success' ? 'text-green-400' : 'text-red-400';
       const profitText = trade.status === 'success' 
         ? `+$${trade.actualProfit.toFixed(2)} (${trade.actualProfitPercent.toFixed(2)}%)`
-        : `${trade.failReason || 'შეცდომა'}`;
+        : `${trade.failReason || 'Error'}`;
       
       html += `
         <div class="trade-item glass p-2 rounded-md text-sm">
@@ -377,7 +377,7 @@ function updateTradeHistoryUI() {
             <span class="${statusClass}">${profitText}</span>
           </div>
           <div class="text-xs text-gray-400 mt-1">
-            ${trade.opportunity} არბიტრაჟი · $${trade.amount.toFixed(2)} · გაზი: ${trade.gas} SOL
+            ${trade.opportunity} arbitrage · $${trade.amount.toFixed(2)} · Gas: ${trade.gas} SOL
           </div>
         </div>
       `;
@@ -422,13 +422,13 @@ function loadTradeHistory() {
  */
 function getRandomFailReason() {
   const reasons = [
-    'სლიფეიჯის შეცდომა',
-    'არასაკმარისი ლიკვიდობა',
-    'გაზის ლიმიტი ამოიწურა',
-    'ტრანზაქცია უარყოფილია',
-    'ფასი შეიცვალა ტრანზაქციამდე',
-    'ოქრადერის შეცდომა',
-    'ბლოკჩეინის გადატვირთვა'
+    'Slippage error',
+    'Insufficient liquidity',
+    'Gas limit exceeded',
+    'Transaction rejected',
+    'Price changed before transaction',
+    'Order book error',
+    'Blockchain overload'
   ];
   
   return reasons[Math.floor(Math.random() * reasons.length)];
